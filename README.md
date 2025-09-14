@@ -3,14 +3,14 @@
 **Repository:** Replication materials for  
 **Endre Borbáth & Swen Hutter (forthcoming).** *Brand Transformation in European Politics: The Rise and Limits of Nonclassical Names*, **Perspectives on Politics**.
 
-This README maps each numbered file to what it produces, and clearly separates **Main Text** and **Appendix** outputs so you can find figures/tables fast.
+This README mirrors the **nested header structure (H1 → H2)** of the R Markdown files so you can quickly find the exact code that produces each **figure** and **table**, and whether it belongs to the **Main Text** or the **Appendix**.
 
 # Quick Start
 
 1. **Software**: R (≥ 4.2 recommended) with RMarkdown.  
-2. **Clone** the repo and keep the default folder structure (see “Data & folders”).  
-3. **Install packages** (see Dependencies).  
-4. **Run in order**: `step1_...Rmd` → … → `step8_...Rmd`. Knit each file; outputs and intermediate data will be written automatically.
+2. **Clone** the repo and keep the default folder structure (see **Data & Folders**).  
+3. **Install packages** (see **Dependencies**).  
+4. **Run in order**: `step1_...Rmd` → … → `step8_...Rmd`. Knit each file.
 
 # Data & Folders
 
@@ -18,130 +18,156 @@ Expected structure at the project root:
 
 ```
 primary_data/
-  └─ hand_coded_party_name.csv          # manual coding of party names
 context_data/
-  ├─ MPDataset_MPDS2023a_stata14.dta    # CMP/Manifesto Project
-  ├─ idea_export_voter_turnout_database_region.xlsx
-  └─ qog_std_ts_jan24.csv               # QoG time-series
 survey_data/
-  ├─ AU_survey.Rdata
-  ├─ DE_survey.Rdata
-  └─ HU_IT_survey.Rdata
 ```
 
 Intermediate data created by the pipeline:
 ```
-dataset_long.Rdata                      # main analysis panel (created in Step 1/2)
+dataset_long.Rdata   # main analysis panel (created in Step 1/2)
 ```
 
 Paths are handled with `here::here()` in the Rmds.
 
 # Dependencies
 
-Core packages used across steps: `tidyverse`, `dplyr`, `tidyr`, `forcats`, `stringr`, `lubridate`, `here`, `readxl`, `haven`, `countrycode`, `vdemdata`, `ggplot2`, `ggrepel`, `cowplot`, `kableExtra`, `DiagrammeR`, `corrplot`, `fixest`, `lme4`, `plm`, `effects`, `parameters`, `performance`, `broom.mixed`, `texreg`, `thematic`, `sjPlot`, `sandwich`, `lmtest`, `cregg`, `sparkline`.
+Core packages: `tidyverse`, `dplyr`, `tidyr`, `forcats`, `stringr`, `lubridate`, `here`, `readxl`, `haven`, `countrycode`, `vdemdata`, `ggplot2`, `ggrepel`, `cowplot`, `kableExtra`, `DiagrammeR`, `corrplot`, `fixest`, `lme4`, `plm`, `effects`, `parameters`, `performance`, `broom.mixed`, `texreg`, `thematic`, `sjPlot`, `sandwich`, `lmtest`, `cregg`, `sparkline`.
 
-Install any missing packages before running.
+# Step 1 — Build the longitudinal party panel
+*File:* `step1_building.Rmd`  
+Builds the party–year panel, merges identifiers, computes party-level flags. **Output:** `dataset_long.Rdata`.
 
-# Main Text: Figures & Tables Map
+# Step 2 — Merge context & macro indicators
+*File:* `step2_merge_context.Rmd`  
+Enriches `dataset_long.Rdata` with CMP/MPDS, turnout, QoG, V‑Dem (via `vdemdata`).
 
-- **Step 3 — Descriptive (Europe-wide)**  
-  - **Figures:**  
-    - Fig. 1 — Distribution of party names over time (1945–2023)  
-    - Fig. 2 — Distribution of party name types in Europe  
-    - Fig. 3 — Distribution of party names by party family (1945–2023)
-  - **Tables:**  
-    - Table 2 — Distribution of brands by party type
+# Step 3 — Descriptive analysis (Europe-wide)
+*File:* `step3_descriptive_analysis.Rmd`
 
-- **Step 4 — Baseline Regression (Europe-wide)**  
-  - **Figures:** Fig. 4 & Fig. 8 — Logistic regression models of party naming; Fig. 7 — V-Party coverage  
-  - **Tables:** Table 2 — Hierarchical logistic regression (1945–2023); Table 3 — Partial sample (1970–2023)
+## Analysis in the main text
+- Figure 1: Distribution of party names over time (1945-2023)
+- Figure 2: Distribution of party name types in Europe
+- Figure 3: Distribution of party names by party family (1945-2023)
+- Table 2: Distribution of brands by party type
 
-- **Step 5 — Re-branding Dynamics**  
-  - **Figures:** Fig. 2 — Re-branding over time (1945–2023); Fig. 3 — Re-branding by party family; Fig. 4–5 — Logistic models  
-  - **Tables:** Table 1 — Overall re-branding (hierarchical logistic); Table 2 — Type-specific re-branding
+## Appendix A
+- Figure 1: Programmatic references in the names of parties (1945-2023)
+- Figure 2: Organizational references in the names of parties (1945-2023)
+- Figure 3: Distribution over time of party brands across 28 European countries (1945-2023)
+- Figures for the Table 1
+- Figure 4: Over time distribution of party brands within countries (1945-2023)
+- Corelation plots
+  - Figure 6: Correlation between context level predictors
+  - Figure 5: Correlation between party level predictors
 
-- **Step 7 — Models by Region**  
-  - **Figures:** Fig. 4 — Western Europe model; Fig. 5 — Eastern Europe model  
-  - **Tables:** Table 3 — Western Europe; Table 4 — Eastern Europe
+## Appendix B
+- Figure 1: Number of parties re-branding between 1945-2023
 
-- **Step 8 — Conjoint Experiments**  
-  - **Figures:** **Main text Fig. 5** — New party branding conjoint experiment
+## Appendix D
+- Figure 1: Crisis of representation in Europe
 
-# Appendix: Figures & Tables Map
+# Step 4 — Regression analysis (Europe-wide)
+*File:* `step4_regression_analysis.Rmd`
 
-- **Step 3 — Additional descriptives**  
-  - Variable correlations; country-over-time distributions (appendix figures)
+## Main text
+- Figure 4: Logistic regression model of party naming
 
-- **Step 4 — Robustness & coverage**  
-  - Coverage figures (e.g., V-Party variables)
+## Appendix A
+- Figure 7: Coverage of the VParty variables
+- Table 2: Hierarchical logistic regression models of party brands (1945-2023)
+- Table 3: Partial sample (1970-2023) - hierarchical logistic regression models of party brands with additional independent variables
+- Figure 8: Logistic regression model of party naming
 
-- **Step 5 — Additional re-branding models**  
-  - Extended model variants and type-specific results
+# Step 5 — Re-branding analysis
+*File:* `step5_rebranding_analysis.Rmd`
 
-- **Step 6 — Descriptives by Region**  
-  - **Tables:** Western vs Eastern distributions  
-  - **Figures:** Regional time trends; distributions by family
+## Appendix B
+- Figure 2: Distribution over time of re-branding parties across 28 European countries (1945-2023)
+- Figure 3: Distribution over party families of re-branding parties across 28 European countries (1945-2023)
+- Table 1: Overall re-branding (1945-2023) - hierarchical logistic regression models
+- Figure 4: Logistic regression model of parties overall re-branding
+- Table 2: Re-branding as specific types (1945-2023) - hierarchical logistic regression models
+- Figure 5: Logistic regression model of parties re-branding as specific types
 
-- **Step 7 — Region-specific tables**  
-  - Full model tables for Western/Eastern runs
+# Step 6 — Descriptive analysis by region
+*File:* `step6_descriptive_analysis_by_region.Rmd`
 
-- **Step 8 — Conjoint (Appendix D & E)**  
-  - **Appendix D:** Fig. 2 — Parties re-branding conjoint experiment  
-  - **Appendix E:** Extensive set (Figs. 1–31), including:  
-    - Continuous-DV versions (new/re-branding)  
-    - Country panels: Austria, Italy, Hungary, Germany  
-    - Heterogeneity by satisfaction with democracy, left-right, participation, internal/external efficacy, populist attitudes, trust, salience, partisanship
+## Appendix C (Western Europe)
+- Figure 1: Distribution of party names over time by region (a)
+- Figure 2: Distribution of party names by region (a)
+- Figure 3: Distribution of party names by party family (a)
+- Table 1: Distribution of brands in Western Europe
 
-# Step-by-Step Pipeline (Run in Order)
+## Appendix C (Eastern Europe)
+- Figure 1: Distribution of party names over time by region (b)
+- Figure 2: Distribution of party names by region (b)
+- Figure 3: Distribution of party names by party family (b)
+- Table 2: Distribution of brands in Eastern Europe
 
-## 1) `step1_building.Rmd` — Build the longitudinal party panel
-- **Inputs:** `primary_data/hand_coded_party_name.csv` (+ external sources via packages).  
-- **What it does:** Constructs a year–party panel, fills gaps, merges core IDs, computes party-level variables, prepares base structure.  
-- **Output (data):** `dataset_long.Rdata` (initial build).
+# Step 7 — Regression analysis by region
+*File:* `step7_regression_analysis_by_region.Rmd`
 
-## 2) `step2_merge_context.Rmd` — Add context & macro indicators
-- **Inputs:** `dataset_long.Rdata`, `context_data/MPDataset_MPDS2023a_stata14.dta`, `context_data/idea_export_voter_turnout_database_region.xlsx`, `context_data/qog_std_ts_jan24.csv`.  
-- **What it does:** Enriches with CMP/MPDS content, turnout, QoG, V-Dem (via `vdemdata`).  
-- **Output (data):** Updated `dataset_long.Rdata` with contextual variables.
+## Appendix C (Western Europe)
+- Table 3: Logistic regression models of brands in Western Europe
+- Figure 4: Logistic regression model of party naming in Western Europe
 
-## 3) `step3_descriptive_analysis.Rmd` — Europe-wide descriptives
-- **Inputs:** `dataset_long.Rdata`.  
-- **Outputs:** Main-text descriptives (Figs. 1–3; Table 2) + appendix descriptives.
+## Appendix C (Eastern Europe)
+- Table 4: Logistic regression models of brands in Eastern Europe
+- Figure 5: Logistic regression model of party naming in Eastern Europe
 
-## 4) `step4_regression_analysis.Rmd` — Baseline models
-- **Inputs:** `dataset_long.Rdata`.  
-- **Outputs:** Main-text logistic models (Figs. 4, 7, 8; Tables 2–3) + coverage plots.
+# Step 8 — Conjoint experiment analyses
+*File:* `step8_experiment_analysis.Rmd`
 
-## 5) `step5_rebranding_analysis.Rmd` — Re-branding dynamics
-- **Inputs:** `dataset_long.Rdata`.  
-- **Outputs:** Main-text re-branding figures/tables + appendix model variants.
+## Main text
+- Figure 5: New party branding conjoint experiment
 
-## 6) `step6_descriptive_analysis_by_region.Rmd` — Region descriptives
-- **Inputs:** `dataset_long.Rdata`.  
-- **Outputs:** Appendix tables/figures for Western vs Eastern Europe.
+## Appendix D
+- Figure 2: Parties rebranding conjoint experiment
 
-## 7) `step7_regression_analysis_by_region.Rmd` — Region models
-- **Inputs:** `dataset_long.Rdata`.  
-- **Outputs:** Main-text regional figures + appendix model tables.
-
-## 8) `step8_experiment_analysis.Rmd` — Conjoint experiments
-- **Inputs:** `survey_data/AU_survey.Rdata`, `survey_data/DE_survey.Rdata`, `survey_data/HU_IT_survey.Rdata`.  
-- **Outputs:** Main-text Fig. 5 (new party branding) + Appendix D/E figures and heterogeneity results.
+## Appendix E
+- Figure 1: New party branding conjoint experiment - continuous dependent variable
+- Figure 2: Parties re-branding conjoint experiment - continuous dependent variable
+- Figure 3: Austria: New party branding conjoint experiment
+- Figure 4: Italy: New party branding conjoint experiment
+- Figure 5: Hungary: New party branding conjoint experiment
+- Figure 6: Germany: New party branding conjoint experiment
+- Figure 7: Austria: Parties re-branding conjoint experiment
+- Figure 8: Italy: Parties re-branding conjoint experiment
+- Figure 9: Hungary: Parties re-branding conjoint experiment
+- Figure 10: Germany: Parties re-branding conjoint experiment
+- Figure 11: Heterogeneous effects by satisfaction with democracy (new party branding)
+- Figure 12: Heterogeneous effects by satisfaction with democracy (parties re-branding)
+- Figure 13: Heterogeneous effects by left-right (new party branding)
+- Figure 14: Heterogeneous effects by left-right (parties re-branding)
+- Figure 15: Heterogeneous effects by the strength of party identification (new party branding)
+- Figure 16: Heterogeneous effects by the strength of party identification (parties re-branding)
+- Figure 17: Heterogeneous effects by participation in demonstrations (new party branding)
+- Figure 18: Heterogeneous effects by participation in demonstrations (parties re-branding)
+- Figure 19: Heterogeneous effects by internal eﬀicacy (new party branding)
+- Figure 20: Heterogeneous effects by internal eﬀicacy (parties re-branding)
+- Figure 21: Heterogeneous effects by external eﬀicacy (new party branding)
+- Figure 22: Heterogeneous effects by external eﬀicacy (parties re-branding)
+- Figure 23: Heterogeneous effects by populist attitudes (new party branding)
+- Figure 24: Heterogeneous effects by populist attitudes (parties re-branding)
+- Figure 25: Heterogeneous effects by trust (new party branding)
+- Figure 26: Heterogeneous effects by trust (parties re-branding)
+- Figure 27: Heterogeneous effects by issue salience (new party branding)
+- Figure 28: Austria: Heterogeneous effects by partisanship (parties re-branding)
+- Figure 29: Italy: Heterogeneous effects by partisanship (parties re-branding)
+- Figure 30: Hungary: Heterogeneous effects by partisanship (parties re-branding)
+- Figure 31: Germany: Heterogeneous effects by partisanship (parties re-branding)
 
 # Reproduction Tips
 
-- **Order matters:** Rebuild `dataset_long.Rdata` via **Step 1** → **Step 2** before Steps 3–7. Step 8 is independent of the panel but needs `survey_data/`.  
-- **Project root:** Open the R project at the repo root so `here::here()` resolves paths correctly.  
-- **Randomness:** If any models use simulation/bootstrap, set a seed at the top of the file.  
-- **Figures & tables:** Created during knitting (e.g., `ggplot2`, `kableExtra`, `texreg`/`sjPlot`). Filenames/paths follow chunk defaults.  
-- **Session info:** Keep `sessionInfo()` when knitting for provenance.
+- **Order matters:** run **Step 1** → **Step 2** before Steps 3–7; Step 8 is independent of the panel but needs `survey_data/`.  
+- **Project root:** open the R project at the repo root so `here::here()` resolves paths correctly.  
+- **Randomness:** set a seed at the top of files that use simulation/bootstrap.  
+- **Provenance:** keep `sessionInfo()` when knitting.
 
 # Citation
-
-If you use or adapt these materials, please cite:
 
 > Borbáth, E., & Hutter, S. (forthcoming). *Brand Transformation in European Politics: The Rise and Limits of Nonclassical Names*. **Perspectives on Politics**.
 
 # Contact
 
-For questions about the replication materials, please open an issue on the repository or contact the authors.
+Open an issue on the repository or contact the authors.
