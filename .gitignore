@@ -56,12 +56,6 @@ cache/
 .DS_Store
 Thumbs.db
 
-# --- Project-specific ---
-dataset_long.Rdata
-primary_data/
-context_data/
-survey_data/
-
 # Allow raw LaTeX and RMarkdown source + outputs
 !*.R
 !*.Rmd
