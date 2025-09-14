@@ -6,7 +6,7 @@ output: html_document
 
 # Loading packages
 
-```{r setup, include=FALSE}
+```{r, echo=T, message = T, include = T}
 
 library(readxl)
 library(tidyr)
@@ -45,7 +45,7 @@ colors <- thematic::okabe_ito(8)[-6]
 ## Figure 1: Distribution of party names over time by region (a)
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 ## Organizational and ideological dimensions separated - one plot - see descriptive analysis
 
@@ -184,7 +184,7 @@ ggsave(plot=last_plot(),
 
 ## Figure 2: Distribution of party names by region (a)
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 library(DiagrammeR)
 library(DiagrammeRsvg)
@@ -233,7 +233,7 @@ writeLines(svg_code, "appendix/figures/decision_tree_west.svg")
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot1 <- dat %>% 
   select(party_id, typology) %>% 
@@ -291,7 +291,7 @@ cat(table_latex)
 
 ## Figure 3: Distribution of party names by party family (a)
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot1 <- dat %>% 
   mutate(indic=ifelse(typology=="Ideological party", 1, 0)) %>% 
@@ -391,7 +391,7 @@ ggsave(plot=last_plot(),
 ## Table 1: Distribution of brands in Western Europe
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 dat <- dat %>% 
   mutate(dep_vars=case_when(typology=="Ideological party" ~ 1,
                             TRUE ~ 0))
@@ -486,7 +486,7 @@ ideological_party <- dat_plot  %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat <- dat %>% 
   mutate(dep_vars=case_when(typology=="Nonideological nonparty" ~ 1,
@@ -547,7 +547,7 @@ nonideological_nonparty <- dat_plot %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat <- dat %>% 
   mutate(dep_vars=case_when(typology=="Nonideological movement" ~ 1,
@@ -608,7 +608,7 @@ nonideological_movement <- dat_plot %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot <- bind_rows(ideological_party, nonideological_nonparty, nonideological_movement) %>% 
   filter(!(group_var %in% c("cult_progressive", "econ_left", "opp_party"))) %>% 
@@ -668,7 +668,7 @@ writeLines(mod_res, "appendix/tables/Table1_west.tex")
 # Appendix C (Eastern Europe)
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat <- d_lng %>% 
   filter(democratization=="IIIrd wave in EE") %>% 
@@ -679,7 +679,7 @@ dat <- d_lng %>%
 
 ## Figure 1: Distribution of party names over time by region (b)
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 ## Organizational and ideological dimensions separated - one plot - see descriptive analysis
 
@@ -818,7 +818,7 @@ ggsave(plot=last_plot(),
 
 ## Figure 2: Distribution of party names by region (b)
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 library(DiagrammeR)
 library(DiagrammeRsvg)
@@ -867,7 +867,7 @@ writeLines(svg_code, "appendix/figures/decision_tree_east.svg")
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot1 <- dat %>% 
   select(party_id, typology) %>% 
@@ -923,7 +923,7 @@ cat(table_latex)
 
 ## Figure 3: Distribution of party names by party family (b)
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot1 <- dat %>% 
   mutate(indic=ifelse(typology=="Ideological party", 1, 0)) %>% 
@@ -1023,7 +1023,7 @@ ggsave(plot=last_plot(),
 ## Table 2: Distribution of brands in Eastern Europe
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 dat <- dat %>% 
   mutate(dep_vars=case_when(typology=="Ideological party" ~ 1,
                             TRUE ~ 0))
@@ -1118,7 +1118,7 @@ ideological_party <- dat_plot  %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat <- dat %>% 
   mutate(dep_vars=case_when(typology=="Nonideological nonparty" ~ 1,
@@ -1179,7 +1179,7 @@ nonideological_nonparty <- dat_plot %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat <- dat %>% 
   mutate(dep_vars=case_when(typology=="Nonideological movement" ~ 1,
@@ -1240,7 +1240,7 @@ nonideological_movement <- dat_plot %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot <- bind_rows(ideological_party, nonideological_nonparty, nonideological_movement) %>% 
   filter(!(group_var %in% c("cult_progressive", "econ_left", "opp_party"))) %>% 
@@ -1298,6 +1298,6 @@ writeLines(mod_res, "appendix/tables/Table1_east.tex")
 
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 ```

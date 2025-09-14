@@ -4,7 +4,7 @@ author: "Endre Borbáth and Swen Hutter"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r, echo=T, message = T, include = T}
 
 library(readxl)
 library(tidyr)
@@ -27,7 +27,7 @@ dat <- load("dataset_long.Rdata")
 
 # Vdem
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 v_dem <- vdemdata::vdem %>% 
   select("country_name", "country_text_id", "year", 
@@ -51,7 +51,7 @@ rm(v_dem)
 
 # Electoral volatility
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 
 vol_dat_w1 <- read_xlsx("context_data/dataset_of_electoral_volatility_and_its_internal_components_in_western_europe__1945-2015_.xlsx") %>% 
@@ -107,7 +107,7 @@ d_lng <- left_join(d_lng, vol_dat, by=c("country", "year"))
 
 # Voter turnout
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 turnoutdat <- read_excel("context_data/idea_export_voter_turnout_database_region.xlsx")
 
@@ -170,7 +170,7 @@ d_lng <- left_join(d_lng, turnoutdat, by=c("country", "year"))
 
 # party facts
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 library(tidyverse)
 
@@ -205,7 +205,7 @@ rm(dataset_1, dataset_2, partyfacts, partyfacts_raw)
 
 # CMP data
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 full_grid <- d_lng %>% 
   ungroup(.) %>% 
@@ -261,7 +261,7 @@ link_table <- link_table %>%
 
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 d_lng <- left_join(d_lng, link_table) 
 
@@ -270,7 +270,7 @@ rm(file_name, file_out, url)
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 range01 <- function(x){(x-min(x, na.rm = TRUE))/(max(x, na.rm = TRUE)-min(x, na.rm = TRUE))}
 
@@ -297,7 +297,7 @@ cmp_dat <- read_dta("context_data/MPDataset_MPDS2023a_stata14.dta") %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 cmp_country <- cmp_dat %>% 
   select(countryname, edate, cmp_econ_polar, cmp_cult_polar, cmp_rile_polar) %>% 
@@ -347,7 +347,7 @@ rm(cmp_dat, cmp_country, dat, full_grid)
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 QoG <- read_csv("context_data/qog_std_ts_jan24.csv") %>% 
   select(cname, year, gtm_parl) %>% # gtm_parl - parliamentary/ presidential
@@ -378,7 +378,7 @@ rm(QoG)
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 d_lng <- d_lng %>% 
   filter(!is.na(v2x_polyarchy)) # these are cases that were not democracies during the period of observation, e.g., they did not exist, or there was nothing interpretable as an electoral democracy. Namely:
@@ -397,6 +397,6 @@ save(d_lng, file="dataset_long.Rdata")
 
 ```
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 ```

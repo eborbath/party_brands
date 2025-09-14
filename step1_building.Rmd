@@ -4,7 +4,7 @@ author: "Endre Borbáth and Swen Hutter"
 output: html_document
 ---
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 
 rm(list = ls())
@@ -31,7 +31,7 @@ dat <- read_csv("primary_data/hand_coded_party_name.csv")
 
 ## fill in the panel
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 # I add the first election for each party and other party specific time constant factors from parlgov
 
 # In this chunk, the data set is filled up so that each year from the founding to the disappearance of the organization is present in the data.
@@ -90,7 +90,7 @@ dat <- dat %>%
 
 ## Merging with parlgov to get all parties,  make some corrections and fill the missing values in families, fill the missings in the vote share and seat share
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 parlgov_party <- read_xlsx("context_data/parlgov-stable.xlsx", sheet = "party") %>% #2022 stable version, https://doi.org/10.7910/DVN/UKILBE 
 select(party_id, family_name, family_name_short) %>% 
@@ -120,7 +120,7 @@ dat <- left_join(dat, parlgov_party) %>%
 ```
 
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 # Elections from ParlGov
 # keeping the ones that were later in the year when there were multiple elections per year
@@ -205,7 +205,7 @@ dat <- dat %>%
 
 ```
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 # Cabinets from ParlGov
 # keeping the ones who were later in the year when there were multiple elections per year
@@ -277,7 +277,7 @@ dat <- dat %>%
 
 # mainstream (in gov. before) and challengers (not in gov. before)
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 dat <- dat %>% 
   filter((democratization=="Ist or IInd wave" & year>=1945 & year<=2023) |
@@ -313,7 +313,7 @@ dat <- dat %>%
 ```
 
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 ##merge link_table with VDEM
 # download and read Party Facts mapping table
 file_name <- "context_data/partyfacts-mapping.csv"
@@ -389,7 +389,7 @@ dat<- merge(dat, v_dem, by = c("year", "party_id"), all.x = T)
 ```
 
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 #######################
 ####org_refr coding####
@@ -433,7 +433,7 @@ dat <- dat %>%
 ```
 
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 #################################
 ####typology vars and coding#####
@@ -519,7 +519,7 @@ dat <- dat %>% # to distinguish transformed parties
 
 # to exclude the part of the panel over the max_year
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 orig_max_year <- dat %>% 
   filter(orig_obs==1) %>% 
@@ -560,7 +560,7 @@ dat <- left_join(dat, max_year) %>%
 
 # to create the new party identifier
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 dat <- dat %>% 
   group_by(party_id) %>% 
@@ -610,7 +610,7 @@ dat <- dat %>%
 
 ```
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 max_min <- dat %>% 
   select(party_id, year, max_year) %>% 
@@ -629,7 +629,7 @@ rm(max_min)
 
 ```
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 dat <- dat %>% 
   mutate(past_pm_lag1 = case_when(past_pm_lag1 == "has been/is pm party" ~ 1,
@@ -677,7 +677,7 @@ dat <- dat %>%
 ```
 
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 
 d_lng <- dat
 
@@ -685,5 +685,5 @@ save(d_lng, file = "dataset_long.Rdata")
 ```
 
 
-```{r, message = F, include = F}
+```{r, echo=T, message = T, include = T}
 ```

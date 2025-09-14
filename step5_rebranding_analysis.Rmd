@@ -6,7 +6,7 @@ output: html_document
 
 # Loading packages
 
-```{r setup, include=FALSE}
+```{r, echo=T, message = T, include = T}
 
 library(readxl)
 library(tidyr)
@@ -29,6 +29,7 @@ library(fixest)
 library(parameters)
 library(margins)
 library(here)
+library(tidytext)
 
 rm(list = ls()) 
 
@@ -65,7 +66,7 @@ return(plot_dat)
 
 # Appendix B
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 d_lng <- d_lng %>% 
   mutate(ideol_brand = case_when(grepl("Nonideolog", typology) ~ 1,
@@ -127,7 +128,7 @@ d_lng <- d_lng %>%
 ## Figure 2: Distribution over time of re-branding parties across 28 European countries (1945-2023)
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 # Define the function
 calculate_dummy_share <- function(data, dummy_var) {
@@ -234,7 +235,7 @@ ggsave(plot=last_plot(),
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 reg_dat <- d_lng %>% 
   mutate(coalition=as.numeric(coalition)-1) %>% 
@@ -308,7 +309,7 @@ reg_dat <- d_lng %>%
 
 ## Figure 3: Distribution over party families of re-branding parties across 28 European countries (1945-2023)
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 calculate_indicator_share <- function(data, indic, DV_label) {
   
@@ -439,7 +440,7 @@ ggsave(plot=last_plot(),
 
 ```
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 
 m.full.1 <- glmer(rb_typology ~
@@ -485,7 +486,7 @@ plot_dat <- rbind(margins_2ci(m.full.1),
 
 ## Table 1: Overall re-branding (1945-2023) - hierarchical logistic regression models
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 latex_table <- texreg(list(m.full.1, m.full.2, m.full.3),
        custom.model.names = c("party name", 
@@ -539,7 +540,7 @@ writeLines(latex_table, con = "appendix/tables/mlm_overall_rebrand.tex")
 
 ## Figure 4: Logistic regression model of parties overall re-branding
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 
 plot_dat <- plot_dat %>% 
@@ -655,7 +656,7 @@ ggsave(plot=last_plot(),
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
   
 m.full.1 <- glmer(rb_ideological_party ~
@@ -702,7 +703,7 @@ plot_dat <- rbind(margins_2ci(m.full.1),
 ## Table 2: Re-branding as specific types (1945-2023) - hierarchical logistic regression models
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 latex_table <- texreg(list(m.full.1, m.full.2, m.full.3),
        custom.model.names = c("party name", 
@@ -756,7 +757,7 @@ writeLines(latex_table, con = "appendix/tables/mlm_by_type_rebrand.tex")
 
 ## Figure 5: Logistic regression model of parties re-branding as specific types
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 plot_dat <- plot_dat %>% 
   rename(estimate=AME,
@@ -869,6 +870,6 @@ ggsave(plot=last_plot(),
 
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 ```

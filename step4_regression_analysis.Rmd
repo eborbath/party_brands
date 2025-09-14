@@ -6,7 +6,7 @@ output: html_document
 
 # Loading packages
 
-```{r setup, include=FALSE}
+```{r, echo=T, message = T, include = T}
 
 library(readxl)
 library(tidyr)
@@ -68,7 +68,7 @@ return(plot_dat)
 
 ## Figure 7: Coverage of the VParty variables
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 # Step 1: Identify which (country, year) pairs exist in the original data
 existing_cells <- d_lng %>%
@@ -125,7 +125,7 @@ ggsave(plot=last_plot(),
 
 - In this part I don't yet add the party organizational variables, since those have more missings
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 party_lev_dummy <- c("past_pm_lag1", "opp_party_lag1", "coalition")
 party_lev_cont <- c("vote_share_lag1", "party_age") # "state_market", "liberty_authority"
@@ -202,7 +202,7 @@ reg_dat <- reg_dat %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 
 m.full.1 <- glmer(dep_var1 ~
@@ -244,7 +244,7 @@ m.full.3 <- glmer(dep_var3 ~
 
 ## Table 2: Hierarchical logistic regression models of party brands (1945-2023)
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 latex_table <- texreg(list(m.full.1, m.full.2, m.full.3),
        custom.model.names = c("party name", 
@@ -303,7 +303,7 @@ writeLines(latex_table, con = "appendix/tables/mlm_logits.tex")
 
 ## Figure 4: Logistic regression model of party naming
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 plot_dat <- rbind(margins_2ci(m.full.1), 
                   margins_2ci(m.full.2), 
@@ -424,7 +424,7 @@ ggsave(plot=last_plot(),
 
 # Partial sample
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 # centering, and selecting what is included
 reg_dat <- reg_dat %>%  
@@ -433,7 +433,7 @@ reg_dat <- reg_dat %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 m.partial.1 <- glmer(dep_var1 ~
                     party_fam + past_pm_lag1 + opp_party_lag1 + 
@@ -478,7 +478,7 @@ m.partial.3 <- glmer(dep_var3 ~
 
 ## Table 3: Partial sample (1970-2023) - hierarchical logistic regression models of party brands with additional independent variables
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 latex_table <- texreg(list(m.partial.1, m.partial.2, m.partial.3),
        custom.model.names = c("party name", 
@@ -534,7 +534,7 @@ writeLines(latex_table, con = "appendix/tables/mlm_logits2.tex")
 
 ## Figure 8: Logistic regression model of party naming
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 plot_dat <- rbind(margins_2ci(m.partial.1), 
                   margins_2ci(m.partial.2), 
@@ -657,6 +657,6 @@ ggsave(plot=last_plot(),
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 8.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 ```

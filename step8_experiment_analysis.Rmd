@@ -6,7 +6,7 @@ output: html_document
 
 # Loading packages
 
-```{r setup, include=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 # Setup
 knitr::opts_chunk$set(echo = TRUE)
 options(scipen = 999)
@@ -59,7 +59,7 @@ return(plot_dat)
 
 # Data management
 
-```{r, include=FALSE}
+```{r, echo=T, message = T, include = T}
 # creating a joint data file with the three countries
 
 load("survey_data/AU_survey.Rdata")
@@ -258,7 +258,7 @@ table(dat$ext_eff, dat$market, useNA = "always") # collapse the last two categor
 # table(dat$party_txt[is.na(dat$party_in_CJ2)])
 ```
 
-```{r, include=FALSE}
+```{r, echo=T, message = T, include = T}
 ## populism factor
 
 AU_dat_fac <- AU_dat %>%
@@ -348,7 +348,7 @@ table(dat$populism_cat, useNA = "always")
 table(is.na(dat$populism_cat))
 ```
 
-```{r, include=FALSE}
+```{r, echo=T, message = T, include = T}
 ## trust factor
 
 AU_dat_fac <- AU_dat %>%
@@ -431,7 +431,7 @@ table(is.na(dat$trust_cat), dat$market)
 
 ## Figure 5: New party branding conjoint experiment
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 plot_dat <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, estimate = "mm") %>%
   add_row(level = "Name", feature = "CJ1Name") %>%
@@ -506,7 +506,7 @@ ggsave(
 
 ## Figure 2: Parties rebranding conjoint experiment
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 plot_dat <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, estimate = "mm") %>%
   add_row(level = "Name", feature = "CJ2Name") %>%
@@ -583,7 +583,7 @@ ggsave(
 
 ## Figure 1: New party branding conjoint experiment - continuous dependent variable
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 cj(dat, CJ1Scale ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, estimate = "mm") %>%
   add_row(level = " ", feature = "CJ1Name") %>%
   add_row(level = "  ", feature = "CJ1Organization") %>%
@@ -619,7 +619,7 @@ ggsave(
 
 ## Figure 2: Parties re-branding conjoint experiment - continuous dependent variable
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 plot_dat <- cj(dat, CJ2Scale ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, estimate = "mm") %>%
   add_row(level = " ", feature = "CJ2Name") %>%
   add_row(level = "  ", feature = "CJ2Organization")
@@ -664,7 +664,7 @@ ggsave(
 ## Figure 6: Germany: New party branding conjoint experiment
 
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 for (i in c("Austria", "Italy", "Hungary", "Germany")) {
   cj(subset(dat, market == i), CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, estimate = "mm") %>%
     add_row(level = " ", feature = "CJ1Name") %>%
@@ -705,7 +705,7 @@ for (i in c("Austria", "Italy", "Hungary", "Germany")) {
 ## Figure 9: Hungary: Parties re-branding conjoint experiment
 ## Figure 10: Germany: Parties re-branding conjoint experiment
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 for (i in c("Austria", "Italy", "Hungary", "Germany")) {
   plot_dat <- cj(subset(dat, market == i), CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, estimate = "mm") %>%
     add_row(level = " ", feature = "CJ2Name") %>%
@@ -749,7 +749,7 @@ for (i in c("Austria", "Italy", "Hungary", "Germany")) {
 
 ## Figure 11: Heterogeneous effects by satisfaction with democracy (new party branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~stfdem_cat) # highly significant
 
@@ -800,7 +800,7 @@ ggsave(
 
 ## Figure 12: Heterogeneous effects by satisfaction with democracy (parties re-branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~stfdem_cat) # highly significant
 
@@ -851,7 +851,7 @@ ggsave(
 
 ## Figure 13: Heterogeneous effects by left-right (new party branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 
 cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~lrscale_cat) # highly significant
@@ -904,7 +904,7 @@ ggsave(
 
 ## Figure 14: Heterogeneous effects by left-right (parties re-branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~lrscale_cat) # highly significant
 
@@ -956,7 +956,7 @@ ggsave(
 
 ## Figure 15: Heterogeneous effects by the strength of party identification (new party branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 
 cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~pid_strength) # highly significant
@@ -1010,7 +1010,7 @@ ggsave(
 
 ## Figure 16: Heterogeneous effects by the strength of party identification (parties re-branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 
 cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~pid_strength) # highly significant
@@ -1064,7 +1064,7 @@ ggsave(
 
 ## Figure 17: Heterogeneous effects by participation in demonstrations (new party branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 
 cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~act_demo) # highly significant
@@ -1118,7 +1118,7 @@ ggsave(
 
 ## Figure 18: Heterogeneous effects by participation in demonstrations (parties re-branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 
 cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~act_demo) # highly significant
@@ -1172,7 +1172,7 @@ ggsave(
 
 ## Figure 19: Heterogeneous effects by internal eﬀicacy (new party branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 
 cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~int_eff) # not significant
@@ -1227,7 +1227,7 @@ ggsave(
 
 ## Figure 20: Heterogeneous effects by internal eﬀicacy (parties re-branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~int_eff) # highly significant
 
@@ -1282,7 +1282,7 @@ ggsave(
 ## Figure 21: Heterogeneous effects by external eﬀicacy (new party branding)
 
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 
 cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~ext_eff) # not significant
@@ -1337,7 +1337,7 @@ ggsave(
 
 ## Figure 22: Heterogeneous effects by external eﬀicacy (parties re-branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~ext_eff) # highly significant
 
@@ -1390,7 +1390,7 @@ ggsave(
 
 ## Figure 23: Heterogeneous effects by populist attitudes (new party branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 
 cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~populism_cat) # not significant
@@ -1445,7 +1445,7 @@ ggsave(
 
 ## Figure 24: Heterogeneous effects by populist attitudes (parties re-branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~populism_cat) # highly significant
 
@@ -1498,7 +1498,7 @@ ggsave(
 
 ## Figure 25: Heterogeneous effects by trust (new party branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 
 cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~trust_cat) # not significant
@@ -1553,7 +1553,7 @@ ggsave(
 
 ## Figure 26: Heterogeneous effects by trust (parties re-branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~trust_cat) # highly significant
 
@@ -1606,7 +1606,7 @@ ggsave(
 
 ## Figure 27: Heterogeneous effects by issue salience (new party branding)
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~imp_issue, estimate = "mm") %>%
   mutate(feature = substring(feature, 4)) %>%
   ggplot(aes(y = level, color = BY, shape = BY)) +
@@ -1647,7 +1647,7 @@ ggsave(
 ## Figure 30: Hungary: Heterogeneous effects by partisanship (parties re-branding)
 ## Figure 31: Germany: Heterogeneous effects by partisanship (parties re-branding)
 
-```{r, warning=FALSE, echo=FALSE, fig.width = 7, fig.height = 8}
+```{r, echo=T, message = T, include = T}
 plot_dat <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~party_in_CJ2, estimate = "mm") %>%
   mutate(estimate = case_when(
     estimate == 0 & is.na(std.error) ~ as.numeric(NA),
@@ -1755,6 +1755,6 @@ ggsave(
 ```
 
 
-```{r, warning=FALSE, echo=FALSE}
+```{r, echo=T, message = T, include = T}
 
 ```

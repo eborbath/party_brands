@@ -6,7 +6,7 @@ output: html_document
 
 # Loading packages
 
-```{r setup, include=FALSE}
+```{r, echo=T, message = T, include = T}
 rm(list = ls()) 
 
 library(readxl)
@@ -43,7 +43,7 @@ colors <- thematic::okabe_ito(8)[-6]
 
 ## Figure 1: Distribution of party names over time (1945-2023)
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 ## Organizational and ideological dimensions separated - one plot - see descriptive analysis
 
@@ -180,7 +180,7 @@ ggsave(plot=last_plot(),
 
 ## Figure 2: Distribution of party name types in Europe
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 library(DiagrammeR)
 library(DiagrammeRsvg)
@@ -225,7 +225,7 @@ rsvg_png(charToRaw(svg_code), file = "main_text/figures/Figure2.png", width = 72
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 ## Table with the exact numbers
 
@@ -281,7 +281,7 @@ cat(table_latex)
 
 ## Figure 3: Distribution of party names by party family (1945-2023)
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot1 <- dat %>% 
   mutate(indic=ifelse(typology=="Ideological party", 1, 0)) %>% 
@@ -375,7 +375,7 @@ ggsave(plot=last_plot(),
 
 ## Table 2: Distribution of brands by party type
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 dat <- dat %>% 
   mutate(dep_vars=case_when(typology=="Ideological party" ~ 1,
                             TRUE ~ 0))
@@ -470,7 +470,7 @@ ideological_party <- dat_plot  %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat <- dat %>% 
   mutate(dep_vars=case_when(typology=="Nonideological nonparty" ~ 1,
@@ -531,7 +531,7 @@ nonideological_nonparty <- dat_plot %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat <- dat %>% 
   mutate(dep_vars=case_when(typology=="Nonideological movement" ~ 1,
@@ -592,7 +592,7 @@ nonideological_movement <- dat_plot %>%
 ```
 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot <- bind_rows(ideological_party, nonideological_nonparty, nonideological_movement) %>% 
   filter(!(group_var %in% c("cult_progressive", "econ_left", "opp_party"))) %>% 
@@ -653,7 +653,7 @@ writeLines(mod_res, "main_text/tables/Table2.tex")
 
 ## Figure 1: Programmatic references in the names of parties (1945-2023)
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot <- dat %>% 
   select(ideology, catch_all_ref) %>% 
@@ -694,7 +694,7 @@ ggsave(plot=last_plot(),
 
 ## Figure 2: Organizational references in the names of parties (1945-2023)
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 
 dat_plot <- dat %>% 
@@ -741,7 +741,7 @@ ggsave(plot=last_plot(),
 
 ## Figure 3: Distribution over time of party brands across 28 European countries (1945-2023)
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot1 <- dat %>% 
   mutate(region=case_when(country_name %in% c("Bulgaria", "Czech Republic", "Czechia", 
@@ -830,7 +830,7 @@ ggsave(plot=last_plot(),
 
 ## Figures for the Table 1 
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot1 <- dat %>% 
   mutate(indic=case_when(typology == "Ideological party" ~ 1,
@@ -915,7 +915,7 @@ dat_plot <- full_join(dat_plot, dat_plot2) %>%
 ```
 
 
-```{r, message = F, warning = F, results = 'asis'}
+```{r, echo=T, message = T, include = T}
 
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 target_dir <- file.path(script_dir, "appendix", "figures", "spec_plot")
@@ -974,7 +974,7 @@ writeLines(mod_res, "appendix/desc_countries.tex")
 
 ## Figure 4: Over time distribution of party brands within countries (1945-2023)
 
-```{r, echo = F, message = F, warning =F, fig.height = 5, fig.width = 5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot <- dat %>% 
   mutate(dummy = case_when(typology == "Ideological party" ~ 1,
@@ -1081,7 +1081,7 @@ ggsave(plot=last_plot(),
 
 ## Corelation plots
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 party_lev_dummy <- c("past_pm_lag1", "opp_party_lag1", "coalition")
 party_lev_cont <- c("vote_share_lag1", "party_age") 
@@ -1153,7 +1153,7 @@ reg_dat <- reg_dat %>%
 
 ### Figure 6: Correlation between context level predictors
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 cor_dat <- reg_dat %>% 
   select(-party_lev_cont, -party_lev_dummy, -party_id, -year, -country, -country_decades, -coalition, -party_fam) %>%
   group_by(country_year) %>% 
@@ -1188,7 +1188,7 @@ dev.off()
 
 ### Figure 5: Correlation between party level predictors
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 cor_dat <- reg_dat %>% 
   select(-context_lev, -id_vars) %>% 
   select("party_fam", "past_pm_lag1", "opp_party_lag1", "party_age", "vote_share_lag1", "coalition", "dep_var1", "dep_var2", "dep_var3") %>% 
@@ -1222,7 +1222,7 @@ dev.off()
 
 ## Figure 1: Number of parties re-branding between 1945-2023
 
-```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot1 <- dat %>% 
   mutate(ideol_brand = case_when(grepl("Nonideolog", typology) ~ 1,
@@ -1384,7 +1384,7 @@ ggsave(plot=last_plot(),
 
 ## Figure 1: Crisis of representation in Europe
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 dat_plot <- dat %>% 
   select(country, cmp_rile_polar, cmp_econ_polar, cmp_cult_polar, 
@@ -1435,6 +1435,6 @@ ggsave(plot=last_plot(),
 
 ```
 
-```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r, echo=T, message = T, include = T}
 
 ```
