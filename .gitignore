@@ -1,0 +1,72 @@
+# ==========================================
+# Git Ignore for R + LaTeX projects
+# ==========================================
+
+# --- R specific ---
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+.Rproj.user/
+*.Rproj
+
+# R Markdown / knitr cache
+*_cache/
+cache/
+*.utf8.md
+*.knit.md
+
+# R package build outputs
+*.tar.gz
+*.Rcheck/
+
+# Logs
+*.log
+*.out
+*.Rout
+*.Rhistory
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# --- LaTeX specific ---
+*.aux
+*.bbl
+*.blg
+*.brf
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.lot
+*.toc
+*.synctex.gz
+*.synctex(busy)
+*.nav
+*.snm
+*.vrb
+*.out.ps
+*.pdfsync
+
+# --- OS-specific ---
+.DS_Store
+Thumbs.db
+
+# --- Project-specific ---
+dataset_long.Rdata
+primary_data/
+context_data/
+survey_data/
+
+# Allow raw LaTeX and RMarkdown source + outputs
+!*.R
+!*.Rmd
+!*.tex
+!*.bib
+!*.sty
+!*.cls
+!*.md

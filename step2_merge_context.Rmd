@@ -1,0 +1,402 @@
+---
+title: "Step2: merging contextual information"
+author: "Endre Borbáth and Swen Hutter"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(readxl)
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(haven)
+library(forcats)
+library(ggrepel)
+library(cowplot)
+library(vdemdata)
+library(countrycode)
+library(here)
+
+rm(list = ls()) 
+
+dat <- load("dataset_long.Rdata")
+
+```
+
+# Vdem
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+v_dem <- vdemdata::vdem %>% 
+  select("country_name", "country_text_id", "year", 
+          "v2x_polyarchy") %>% 
+  rename(country = country_text_id) %>% 
+  group_by(country) %>% 
+  arrange(country, year) %>% 
+  mutate(
+    across(.cols = c(v2x_polyarchy), 
+           .fns = ~ dplyr::lag(.x, n=1),
+           .names = "{.col}_lag1")
+  ) %>% 
+  ungroup(.) 
+  
+
+d_lng <- merge(d_lng, v_dem, all.x = TRUE)  
+
+rm(v_dem)
+
+```
+
+# Electoral volatility
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+
+vol_dat_w1 <- read_xlsx("context_data/dataset_of_electoral_volatility_and_its_internal_components_in_western_europe__1945-2015_.xlsx") %>% 
+  select("Country", "Election_Year", "Election_date", "RegV", "AltV", "OthV", "TV")
+
+vol_dat_w2 <- read_xlsx("context_data/update_on_elections_2015-2023.xlsx") %>% 
+  select("Country", "Election_Year", "Election_date", "RegV", "AltV", "OthV", "TV")
+
+vod_dat_e <- read_xlsx("context_data/CEE_volatility_since_1990.xlsx")  %>% 
+  rename(Country=country) %>% 
+  rename(Election_Year = election_year) %>% 
+  rename(Election_date = election_date) %>% 
+  select("Country", "Election_Year", "Election_date", "RegV", "AltV", "OthV", "TV")
+
+vol_dat <- bind_rows(vol_dat_w1, vol_dat_w2, vod_dat_e) %>% 
+  select(-Election_date) %>% 
+  rename(country=Country,
+         year=Election_Year,
+         regv_it=RegV,
+         altv_it=AltV,
+         othv_it=OthV,
+         tv_it=TV) %>%
+  mutate(country=ifelse(grepl("Emanuele, V. (2015),", country), as.character(NA), country)) %>% 
+  group_by(country, year) %>% 
+  mutate_at(vars(contains("_it")), funs(mean(., na.rm = TRUE))) %>%
+  ungroup() %>%
+  unique() %>% 
+  group_by(country) %>% 
+  arrange(country, year) %>% 
+   mutate(
+    across(.cols = c(regv_it, altv_it, othv_it, tv_it),
+           .fns = ~ dplyr::lag(.x, n=1),
+           .names = "{.col}_lag1")
+  ) %>% 
+  ungroup() %>% 
+  filter(!is.na(tv_it))
+  
+full_grid <- expand.grid(year=seq(1945, 2023, 1), 
+                         country=unique(vol_dat$country)) 
+  
+vol_dat <- left_join(full_grid, vol_dat) %>%
+  arrange(country, year) %>% 
+  fill(country, .direction = "updown") %>%
+  group_by(country) %>% 
+  fill(contains("_it"), .direction = "down") %>%
+  ungroup() %>% 
+  mutate(country=countrycode(country, "country.name", "iso3c")) %>% 
+  distinct()
+
+d_lng <- left_join(d_lng, vol_dat, by=c("country", "year")) 
+
+```
+
+# Voter turnout
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+turnoutdat <- read_excel("context_data/idea_export_voter_turnout_database_region.xlsx")
+
+turnoutdat <- turnoutdat %>%
+  arrange(Country, Year) %>%
+  rename(country=Country,
+         Voter_Turnout = `Voter Turnout`) %>% 
+  mutate(Voter_Turnout = as.numeric(sub("%","", Voter_Turnout))) %>% 
+  mutate(year = year(Year)) %>% 
+  select(country, year, Voter_Turnout) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  filter(!is.na(Voter_Turnout)) %>%   group_by(country, year) %>% 
+  mutate(Voter_Turnout = mean(Voter_Turnout, na.rm = TRUE)) %>%
+  ungroup() %>% 
+  unique()
+
+
+turnoutdat <- turnoutdat %>% 
+  group_by(country) %>%
+  arrange(country, year) %>% 
+  mutate(
+    across(.cols = c(Voter_Turnout),
+           .fns = ~ dplyr::lag(.x, n=1),
+           .names = "{.col}_lag1")
+  ) %>% 
+  ungroup(.)
+
+full_grid2 <- expand.grid(country=unique(turnoutdat$country),
+                         year=unique(turnoutdat$year)) 
+
+turnoutdat <- left_join(full_grid2, turnoutdat) %>% 
+  arrange(country, year) %>% 
+  group_by(country) %>% 
+  fill(Voter_Turnout, .direction = "down") %>% 
+  fill(Voter_Turnout_lag1, .direction = "down") %>% 
+  mutate(country=case_when(grepl("Austria", country, fixed = TRUE) ~ "Austria",
+                           grepl("Armenia", country, fixed = TRUE) ~ "Armenia",
+                           grepl("Czechoslovakia", country, fixed = TRUE) ~ "Czechoslovakia",
+                           grepl("Estonia", country, fixed = TRUE) ~ "Estonia",
+                           grepl("Finland", country, fixed = TRUE) ~ "Finland",
+                           grepl("France", country, fixed = TRUE) ~ "France",
+                           grepl("Germany", country, fixed = TRUE) ~ "Germany",
+                           grepl("Greece", country, fixed = TRUE) ~ "Greece",
+                           grepl("Latvia", country, fixed = TRUE) ~ "Latvia",
+                           grepl("Poland", country, fixed = TRUE) ~ "Poland",
+                           grepl("Portugal", country, fixed = TRUE) ~ "Portugal",
+                           grepl("San Marino", country, fixed = TRUE) ~ "San Marino",
+                           grepl("Spain", country, fixed = TRUE) ~ "Spain",
+                           grepl("Turkey", country, fixed = TRUE) ~ "Turkey",
+                           TRUE ~ country)) %>%
+rename(country_name = country) %>% 
+  ungroup() %>% 
+  mutate(country=countrycode(country_name, "country.name", "iso3c")) %>% 
+  select(-country_name) %>% 
+  unique()
+
+d_lng <- left_join(d_lng, turnoutdat, by=c("country", "year"))
+
+```
+
+# party facts
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+library(tidyverse)
+
+# download and read Party Facts mapping table
+file_name <- "context_data/partyfacts-mapping.csv"
+if( ! file_name %in% list.files()) {
+  url <- "https://partyfacts.herokuapp.com/download/external-parties-csv/"
+  download.file(url, file_name)
+}
+partyfacts_raw <- read_csv(file_name, guess_max = 50000)
+partyfacts <- partyfacts_raw %>% filter(! is.na(partyfacts_id))
+
+# link datasets (select only linked parties)
+dataset_1 <- partyfacts %>% filter(dataset_key == "manifesto")
+dataset_2 <- partyfacts %>% filter(dataset_key == "parlgov")
+
+link_table <-
+  dataset_1 %>%
+  inner_join(dataset_2, by = c("partyfacts_id" = "partyfacts_id")) %>% 
+  select(dataset_party_id.x, dataset_party_id.y) %>% 
+  rename(cmp_id = dataset_party_id.x,
+         party_id = dataset_party_id.y) %>% 
+  mutate_at(vars(cmp_id, party_id), ~ as.numeric(as.character(.)))
+
+# write results into file with dataset names in file name
+file_out <- "context_data/partyfacts-linked.csv"
+write_csv(link_table, file_out) 
+
+rm(dataset_1, dataset_2, partyfacts, partyfacts_raw)
+
+```
+
+# CMP data
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+full_grid <- d_lng %>% 
+  ungroup(.) %>% 
+  select(party_id, year)
+
+
+link_table <- merge(link_table, full_grid, all.y=TRUE)
+
+link_table <- link_table %>% 
+  group_by(party_id) %>% 
+  arrange(party_id, year) %>% 
+  fill(cmp_id, .direction="down") %>% 
+  fill(cmp_id, .direction="up") %>% 
+  filter(!is.na(cmp_id)) %>% 
+  mutate(cmp_id=case_when(party_id==290 & year <=1995 ~ 21913,
+                          party_id==290 & year >1995 ~ 21915,
+                          party_id==310 & year <=1989 ~ 23112,
+                          party_id==310 & year >1989 ~ 23113,
+                          party_id==1245 & year <=1990 ~ 82529,
+                          party_id==1245 & year >1990 ~ 82523,
+                          party_id==1102 & year <=1995 ~ 81410,
+                          party_id==1102 & year >1995 | year <=2003 ~ 81042, 
+                          party_id==1102 & year >2003 ~ 81230,
+                          party_id==179 & year >=2004 ~ 97330,
+                          party_id==179 & year <2004 ~ 97320,
+                          party_id==1160 & year >1994 | year <2001  ~ 80229,
+                          party_id==1160 & year >=2001 ~ 80221,
+                          party_id==1160 & year <=1994 ~ 80228,
+                          party_id==706 & year >2000 ~ 97322,
+                          party_id==706 & year <=2000 ~ 97321,
+                          party_id==486 & year >=1995 ~ 83713,
+                          party_id==486 & year <1995 ~ 83220,
+                          party_id==1045 & year <=2004 ~ 88620,
+                          party_id==1045 & year >2004 ~ 88621,
+                          party_id==1120 & year >=2008 ~ 93002,
+                          party_id==1120 & year <2008 ~ 93322,
+                          party_id==32 & year <1995 ~ 87220,
+                          party_id==32 & year >=1995 ~ 87421,
+                          party_id==1493 & year ==2000 ~ 81021,
+                          party_id==1493 & year <2000 | year >2000 ~ 81220, 
+                          party_id==846 & year<1995 | year >1995  ~ 83710,
+                          party_id==846 & year ==1995 ~ 83709,
+                          party_id==1421 & year >=2008 ~ 88460,
+                          party_id==1421 & year <2008 ~ 88041,
+                          party_id==1592 & year <2012 ~ 34020, #2012 is in both
+                          party_id==1592 & year >=2012 ~ 34212,
+                          # here come the other parties
+                          TRUE ~ cmp_id)) %>% 
+                          distinct(.)
+
+```
+
+
+
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+d_lng <- left_join(d_lng, link_table) 
+
+rm(file_name, file_out, url)
+
+```
+
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+range01 <- function(x){(x-min(x, na.rm = TRUE))/(max(x, na.rm = TRUE)-min(x, na.rm = TRUE))}
+
+cmp_dat <- read_dta("context_data/MPDataset_MPDS2023a_stata14.dta") %>%
+  mutate_at(vars(contains('per')), ~ifelse(is.na(.), 0, .)) %>% 
+  mutate(cult_lib= per604 + per103 + per106 + per107 + per602 + per607 + per501,
+         cult_cons= per603 + per109 + per608 + per601, 
+         econ_left= per404 + per403 + per405 + per406 + per412 + per413 + per409 + per504,
+         econ_right= per401 + per407 + per402 + per414 + per505) %>% 
+  mutate(cult=cult_lib-cult_cons,
+         econ=econ_left-econ_right) %>% 
+  mutate_at(vars(cult, econ, rile), ~ range01(.)*10) %>% 
+  mutate(pervote=ifelse(is.na(pervote), 0, pervote)) %>%
+  select(countryname, edate, party, cult, econ, pervote, rile) %>% 
+  group_by(countryname, edate) %>% 
+  mutate(cmp_econ_ctryr_wghtd=weighted.mean(econ, pervote, na.rm=TRUE),
+         cmp_cult_ctryr_wghtd=weighted.mean(cult, pervote, na.rm=TRUE),
+         cmp_rile_ctryr_wghtd=weighted.mean(rile, pervote, na.rm=TRUE)) %>% 
+  mutate(cmp_econ_polar=sqrt(sum((((econ - cmp_econ_ctryr_wghtd)/5)^2)*pervote)),
+         cmp_cult_polar=sqrt(sum((((cult - cmp_cult_ctryr_wghtd)/5)^2)*pervote)),
+         cmp_rile_polar=sqrt(sum((((rile - cmp_rile_ctryr_wghtd)/5)^2)*pervote))) %>% 
+  ungroup(.) 
+
+```
+
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+cmp_country <- cmp_dat %>% 
+  select(countryname, edate, cmp_econ_polar, cmp_cult_polar, cmp_rile_polar) %>% 
+  mutate(year=year(edate)) %>% 
+  group_by(countryname, year) %>% 
+  mutate_at(vars(cmp_econ_polar, cmp_cult_polar, cmp_rile_polar), ~mean(., na.rm=TRUE)) %>% 
+  select(-edate) %>% 
+  ungroup(.) %>% 
+  distinct(.) %>% 
+  group_by(countryname) %>% 
+  mutate(max_date=max(year)) %>% 
+  ungroup(.) %>% 
+  mutate(max_date=ifelse(max_date >= 2015, 2023, max_date)) %>% 
+  group_by(countryname) %>% 
+  arrange(countryname, year) %>% 
+  mutate(
+    across(.cols = c(cmp_econ_polar, cmp_cult_polar, cmp_rile_polar),
+           .fns = ~ dplyr::lag(.x, n=1),
+           .names = "{.col}_lag1")
+  ) %>% 
+  ungroup(.)
+
+full_grid <- expand.grid(countryname=unique(cmp_country$countryname),
+                         year=seq(min(cmp_country$year, na.rm=TRUE), 2023, 1))
+
+cmp_country <- left_join(full_grid, cmp_country) %>% 
+  group_by(countryname) %>% 
+  arrange(countryname, year) %>% 
+  fill(contains("cmp_econ_polar"), .direction = "down") %>% 
+  fill(contains("cmp_cult_polar"), .direction = "down") %>% 
+  fill(contains("cmp_rile_polar"), .direction = "down") %>% 
+  fill(max_date, .direction = "updown") %>% 
+  filter(!is.na(cmp_cult_polar) & !is.na(cmp_econ_polar) & !is.na(cmp_rile_polar)) %>%
+  filter(year<=max_date) %>% 
+  select(-max_date) %>% 
+  rename(country_name=countryname) %>% 
+  mutate(in_cmp=1)
+
+d_lng <- left_join(d_lng, cmp_country)
+
+d_lng <- d_lng %>% 
+  select(-in_cmp) %>% 
+  group_by(country)
+
+rm(cmp_dat, cmp_country, dat, full_grid)
+  
+```
+
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+QoG <- read_csv("context_data/qog_std_ts_jan24.csv") %>% 
+  select(cname, year, gtm_parl) %>% # gtm_parl - parliamentary/ presidential
+  rename(country_name=cname) %>% 
+  # mutate(test=1) %>% 
+  mutate(country_name=case_when(grepl("United Kingdom of Great Britain", 
+                                      country_name) ~ "United Kingdom",
+                                grepl("Netherlands",country_name) ~ "Netherlands",
+                                TRUE ~ country_name)) %>% 
+  mutate(gtm_parl=ifelse(gtm_parl==0, 1, gtm_parl)) %>%  # I collapse the pres and the semi-pres. The pres is only EST btw 1990-91 and Italy btw. 1946-47 #
+  mutate(gtm_parl=ifelse(gtm_parl==2, 0, gtm_parl)) %>% # pres. is the reference
+  mutate(gtm_parl=factor(gtm_parl, levels=c(0, 1))) %>% 
+  group_by(country_name) %>% 
+  arrange(country_name, year) %>% 
+  fill(contains("gtm_parl"), .direction = "downup") %>% # I checked the cases before.
+  mutate(
+    across(.cols = c(gtm_parl),
+           .fns = ~ dplyr::lag(.x, n=1),
+           .names = "{.col}_lag1")
+  ) %>% 
+  fill(contains("wdi_"), .direction = "down") %>% 
+  ungroup(.) 
+  
+d_lng <- left_join(d_lng, QoG) 
+
+rm(QoG)
+
+```
+
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+d_lng <- d_lng %>% 
+  filter(!is.na(v2x_polyarchy)) # these are cases that were not democracies during the period of observation, e.g., they did not exist, or there was nothing interpretable as an electoral democracy. Namely:
+
+  #      DEU EST HRV LTU SVK
+  # 1945   6   0   0   0   0
+  # 1946   7   0   0   0   0
+  # 1947   7   0   0   0   0
+  # 1948   8   0   0   0   0
+  # 1989   0   1   4   2   3
+  # 1990   0   0   6   0  10
+  # 1991   0   0   0   0  11
+  # 1992   0   0   0   0  14
+
+save(d_lng, file="dataset_long.Rdata")
+
+```
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+```

@@ -1,0 +1,50 @@
+
+\begin{table}[h!]
+\caption{Partial sample (1970-2023) - hierarchical logistic regression models of party brands with additional independent variables}
+\begin{center}
+\begin{tabular}{l@{} D{)}{)}{12)3}@{} D{)}{)}{9)3}@{} D{)}{)}{16)3}@{}}
+\toprule
+ & \multicolumn{1}{c}{Classical} & \multicolumn{1}{c}{Nonideological} & \multicolumn{1}{c}{Nonideological} \\
+ & \multicolumn{1}{c}{party name} & \multicolumn{1}{c}{nonparty name} & \multicolumn{1}{c}{movement name} \\
+\midrule
+Intercept                        & -0.90 \;   (0.36)^{*}   & -4.06 \; (0.64)^{***} & -12.32 \;       (2.33)^{***} \\
+Party family (ref: Christ. dem.) &                         &                       &                              \\
+\quad Right-wing                 & -0.47 \;   (0.17)^{**}  & 0.71 \; (0.23)^{**}   & 1.69 \;       (0.49)^{***}   \\
+\quad Green/Ecologist            & 0.62 \;   (0.19)^{***}  & -1.15 \; (0.31)^{***} & 0.47 \;       (0.67)         \\
+\quad Communist/Socialist        & 2.78 \;   (0.21)^{***}  & -2.22 \; (0.34)^{***} & -46.89 \; (3592291.85)       \\
+\quad Conservative               & 0.00 \;   (0.15)        & 1.61 \; (0.22)^{***}  & 3.90 \;       (0.64)^{***}   \\
+\quad Social democracy           & 2.62 \;   (0.14)^{***}  & -2.47 \; (0.25)^{***} & -2.32 \;       (0.73)^{**}   \\
+\quad Liberal                    & 0.08 \;   (0.13)        & 0.45 \; (0.19)^{*}    & -0.63 \;       (0.49)        \\
+\quad Agrarian                   & 0.27 \;   (0.22)        & 1.99 \; (0.31)^{***}  & -52.92 \; (4774555.68)       \\
+\quad Other                      & -15.70 \; (128.01)      & 0.51 \; (0.60)        & -6.57 \;       (7.09)        \\
+Party features                   &                         &                       &                              \\
+\quad Candidate nomination       & -1.65 \;   (0.17)^{***} & 1.38 \; (0.24)^{***}  & -4.01 \;       (0.62)^{***}  \\
+\quad Internal cohesion          & -0.64 \;   (0.17)^{***} & -0.28 \; (0.22)       & 2.14 \;       (0.53)^{***}   \\
+\quad Past PM party              & 0.12 \;   (0.13)        & -0.42 \; (0.27)       & -27.55 \;  (333460.41)       \\
+\quad Opp. party                 & -0.22 \;   (0.09)^{**}  & 0.43 \; (0.13)^{***}  & 0.49 \;       (0.34)         \\
+\quad Log(party age)             & 2.49 \;   (0.34)^{***}  & -2.54 \; (0.41)^{***} & 0.61 \;       (0.96)         \\
+\quad Vote share                 & -1.06 \;   (0.20)^{***} & 1.06 \; (0.28)^{***}  & 1.01 \;       (0.60)         \\
+\quad Electoral coalition        & -2.18 \;   (0.26)^{***} & 1.25 \; (0.21)^{***}  & -3.08 \;       (0.57)^{***}  \\
+System features                  &                         &                       &                              \\
+\quad Econ. polariz.             & 0.09 \;   (0.16)        & 0.09 \; (0.21)        & -2.45 \;       (0.53)^{***}  \\
+\quad Cult. polariz.             & 0.24 \;   (0.16)        & 0.20 \; (0.22)        & -0.56 \;       (0.46)        \\
+\quad Electoral volatil.         & -0.27 \;   (0.14)^{*}   & 0.50 \; (0.19)^{**}   & -0.49 \;       (0.46)        \\
+\quad Turnout                    & -0.17 \;   (0.15)       & -0.13 \; (0.22)       & -0.13 \;       (0.55)        \\
+\quad Electoral dem.             & 0.42 \;   (0.47)        & 1.77 \; (0.69)^{*}    & -3.95 \;       (1.04)^{***}  \\
+\quad Presidentialism            & 0.51 \;   (0.45)        & 1.08 \; (1.05)        & -1.03 \;       (4.65)        \\
+Decades (ref: 1970-1989)         &                         &                       &                              \\
+\quad 1990-2008                  & -0.34 \;   (0.11)^{**}  & 0.18 \; (0.19)        & 0.00 \;       (0.43)         \\
+\quad 2009-2023                  & -0.81 \;   (0.13)^{***} & 0.81 \; (0.21)^{***}  & 0.00 \;       (0.48)         \\
+\midrule
+AIC                              & 4645.52                 & 2375.36               & 616.78                       \\
+BIC                              & 4812.87                 & 2542.71               & 784.13                       \\
+Num. obs.                        & 4612                    & 4612                  & 4612                         \\
+Country*Year                     & 974                     & 974                   & 974                          \\
+Country                          & 27                      & 27                    & 27                           \\
+\bottomrule
+\multicolumn{4}{l}{\scriptsize{$^{***}p<0.001$; $^{**}p<0.01$; $^{*}p<0.05$}}
+\end{tabular}
+\label{table:mlm_reg_table_partial}
+\end{center}
+\end{table}
+

@@ -1,0 +1,859 @@
+\documentclass[12pt]{article}
+
+\usepackage{babel}
+
+\newcommand{\pathtables}{./tables/}
+\newcommand{\txline}{ \\ }
+
+\newcommand{\sectionbreak}{\clearpage}
+
+\usepackage{titlesec}
+\titleformat{\section}
+  {\normalfont\normalsize\bfseries}{\thesection.}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\normalsize\bfseries\itshape}{\thesubsection.}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\itshape}{\thesubsubsection.}{1em}{}
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ left=25mm,
+ top=25mm,
+ bottom=20mm,
+ right=25mm}
+
+\usepackage{titling}
+\usepackage[capposition=top]{floatrow}
+
+\usepackage{amssymb}
+
+\usepackage{graphicx}
+
+\usepackage[normalem]{ulem}
+\useunder{\uline}{\ul}{}
+
+\usepackage{dcolumn}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{caption}
+\usepackage[section]{placeins}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{lscape}
+\usepackage{subcaption}
+\usepackage{setspace}
+\usepackage{tabularray}
+\usepackage{subcaption}
+\usepackage[capposition=top]{floatrow}
+
+\usepackage{threeparttable}
+
+\usepackage[hidelinks]{hyperref}  %hyperref still needs to be put at the end!
+
+\usepackage{doi}
+
+\title{Appendix -- Brand Transformation in European Politics: The Rise and Limits of Nonclassical Names}
+
+\date{} 
+
+\setcounter{secnumdepth}{0} % sections are level 1
+
+\begin{document}
+\sloppy
+
+\begin{titlepage}
+\begin{minipage}{\textwidth}
+\maketitle
+\thispagestyle{empty}
+\setcounter{tocdepth}{2}
+\tableofcontents
+\end{minipage}
+\end{titlepage}
+
+\section{Appendix A: Additional figures and tables}
+
+\subsection{Distributions of party brands}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/ideology_types.png}
+\caption{Programmatic references in the names of parties (1945-2023)}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/org_types.png}
+\caption{Organizational references in the names of parties (1945-2023)}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[H]
+\caption{Distribution over time of party brands across 28 European countries (1945-2023)}
+\label{Fig:timeline}
+\includegraphics[width=\textwidth]{./Figures/all_types.eps}
+\floatfoot{Note: The figure shows the average trend across all types.}
+\end{figure}
+
+\clearpage
+
+\input{./desc_countries.tex}
+
+\newpage
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/country_timeline.eps}
+\caption{Over time distribution of party brands within countries (1945-2023)}
+\end{figure}
+
+\newpage
+
+\subsection{Correlational analysis}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{./Figures/corplot_party.png}
+\caption{Correlation between party level predictors}
+\floatfoot{Note: Missing values are excluded pairwise.}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{./Figures/corplot_context.png}
+\caption{Correlation between context level predictors}
+\floatfoot{Note: For the purposes of the plot, the dependent variables have been averaged at the country*year level. Missing values are excluded pairwise.}
+\end{figure}
+
+\clearpage
+
+\input{\pathtables/mlm_logits.tex}
+
+\clearpage
+
+\subsection{The effect of party organizations}
+
+In this part of the appendix, we examine the effect of two organizational features on party brands. We rely on the VParty dataset and select two items. First, regarding candidate nominations, we rely on the item \textit{v2panom}: 
+
+\begin{itemize}
+  \item[]{Question: Which of the following options best describes the process by which the party decides on candidates for the national legislative elections?}
+  \item[]{Clarification: If nomination procedures vary across constituencies consider the most common practice.}
+  \item[]{Responses}
+  \begin{enumerate}
+  \item{The party leader unilaterally decides on which candidates will run for the party in national legislative elections.}
+  \item{The national party leadership (i.e. an executive committee) collectively decides which candidates will run for the party in national legislative elections.}
+  \item{Delegates of local/regional organizations decide which candidates will run for the party in national legislative elections.}
+  \item{All party members decide on which candidates will run for the party in national legislative elections in primaries/caucuses.}
+  \item{All registered voters decide on which candidates will run for the party in national legislative elections in primaries/caucuses.}
+  \end{enumerate}
+\end{itemize}
+
+Second, concerning internal cohesion, we rely on the item \textit{v2padisa}:
+
+\begin{itemize}
+  \item[]{Question: To what extent do the elites in this party display disagreement over party strategies?}
+  \item[]{Clarification: Party strategies include election campaign strategy, policy stance, distribution of party financial resources, cooperation with other parties (i.e. coalition formation), and the selection of legislative and presidential candidates as well as the party leader. Party elites are prominent and influential party members such as current and former ministers, members of parliament or the party leadership, regional and municipal leaders, and opinion leaders. They do not necessarily have to be the part of the official party leadership.}
+  \item[]{Responses}
+  \begin{enumerate}
+  \item{Party elites display almost complete disagreement over party strategies and many party elites have left the party.}
+  \item{Party elites display a high level of visible disagreement over party strategies and some of them have left the party.}
+  \item{Party elites display some visible disagreement over party strategies, but none of them have left the party.}
+  \item{Party elites display negligible visible disagreement over party strategies.}
+  \item{Party elites display virtually no visible disagreement over party strategies.}
+  \end{enumerate}
+\end{itemize}
+
+Both of these variables are coded at election dates. Therefore, we carry their values forward to the next election. Despite this filling strategy, both items are missing in a substantial part of our dataset. Figure \ref{Fig:missings} shows the country*year combinations where the two variables are observed.
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/missing_map.png}
+\caption{Coverage of the VParty variables}
+\label{Fig:missings} 
+\floatfoot{Note: This figure visualizes the availability of the VParty variables. Each row represents a country, and each column corresponds to a year. Cells filled in gray indicate years for which data is available. Empty cells outlined in black denote years where data is expected but missing. Cells with no frame are years for which no observations exist in the dataset, typically due to countries entering the dataset later.}
+\end{figure}
+
+In what follows, we replicate the multilevel regression analysis using the same specification as presented in the paper on this partial sample, and present the marginal effect of the first lag of the two organizational variables.
+
+\clearpage
+
+\input{\pathtables/mlm_logits2.tex}
+
+\clearpage
+
+\begin{figure}[H] 
+\includegraphics[width=\textwidth]{./Figures/logit_partial_sample.png} 
+\caption{Logistic regression model of party naming} 
+\floatfoot{\textit{Note:} Estimates are from the partial sample shown above. Thick error bars represent 90\% confidence intervals; thin error bars represent 95\% confidence intervals. The model is a three-level logistic regression with random intercepts, nesting observations within country*years and countries.} 
+\label{Fig:mlm_results_partial} 
+\end{figure}
+
+\clearpage
+
+\section{Appendix B: Re-branding parties}
+
+\setcounter{figure}{0}
+\setcounter{table}{0}
+
+\subsection{Distributions of re-branding parties}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/rebranded_parties.png}
+\caption{Number of parties re-branding between 1945-2023}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/re_branding_timeline.eps}
+\caption{Distribution over time of re-branding parties across 28 European countries (1945-2023)}
+\label{Fig:re_branding_timeline}
+\floatfoot{Note: The figure shows the average trend across all countries.}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/re_branding_families.eps}
+\caption{Distribution over party families of re-branding parties across 28 European countries (1945-2023)}
+\label{Fig:re_branding_families}
+\floatfoot{Note: The figure shows the average shares within party families.}
+\end{figure}
+
+\clearpage
+
+\subsection{Correlational analysis}
+
+\input{\pathtables/mlm_overall_rebrand.tex}
+
+\clearpage
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/coefs_mlm_overall_rebrand.eps}
+\caption{Logistic regression model of parties overall re-branding}
+\floatfoot{Note: Estimates from the full sample as shown by Table 1 in Appendix B. The thicker error bars represent 90 percent confidence intervals, the thinner error bars represent 95 percent confidence intervals. Hierarchical two-level logistic regression with random intercepts, parties nested in countries.}
+\label{Fig:mlm_results}
+\end{figure}
+
+\clearpage
+
+\input{\pathtables/mlm_by_type_rebrand.tex}
+
+\clearpage
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/coefs_mlm_types_rebrand.eps}
+\caption{Logistic regression model of parties re-branding as specific types}
+\floatfoot{Note: Estimates from the full sample as shown by Table 2 in Appendix B. The thicker error bars represent 90 percent confidence intervals, the thinner error bars represent 95 percent confidence intervals. Hierarchical two-level logistic regression with random intercepts, parties nested in countries.}
+\label{Fig:mlm_results}
+\end{figure}
+
+\newpage
+
+\section{Appendix C: Disaggregated Analysis: Western and Eastern Europe}
+
+\setcounter{figure}{0}
+\setcounter{table}{0}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+  \includegraphics[width=\textwidth]{./Figures/Figure3_west.png}
+  \caption{Western Europe (1945--2023)}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+  \includegraphics[width=\textwidth]{./Figures/Figure3_east.png}
+  \caption{Eastern Europe (1945--2023)}
+\end{subfigure}
+\caption{Distribution of party names over time by region}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{0.9\textwidth}
+  \includegraphics[width=\textwidth]{./Figures/decision_tree_west.png}
+  \caption{Western Europe}
+\end{subfigure}
+\vspace{0.5em} % Optional spacing between the figures
+\begin{subfigure}[t]{0.9\textwidth}
+  \includegraphics[width=\textwidth]{./Figures/decision_tree_east.png}
+  \caption{Eastern Europe}
+\end{subfigure}
+\caption{Distribution of party names by region}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{0.9\textwidth}
+  \includegraphics[width=\textwidth]{./Figures/Figure4_west.png}
+  \caption{Western Europe}
+\end{subfigure}
+\vspace{0.5em} % Optional spacing between the figures
+\begin{subfigure}[t]{0.9\textwidth}
+  \includegraphics[width=\textwidth]{./Figures/Figure4_east.png}
+  \caption{Eastern Europe}
+\end{subfigure}
+\caption{Distribution of party names by party family}
+\end{figure}
+
+\newpage
+
+\input{./Tables/Table1_west.tex}
+\input{./Tables/Table1_east.tex}
+
+\clearpage
+
+\input{\pathtables/mlm_logits_west.tex}
+
+\clearpage
+
+\input{\pathtables/mlm_logits_east.tex}
+
+\newpage
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/Figure5_west.png}
+\caption{Logistic regression model of party naming in Western Europe}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/Figure5_east.png}
+\caption{Logistic regression model of party naming in Eastern Europe}
+\end{figure}
+
+\newpage
+
+\section{Appendix D: Survey experiments}
+
+\setcounter{figure}{0}
+\setcounter{table}{0}
+
+\subsection{Case selection}
+
+We selected the countries where we fielded our survey based on our theoretical framework, as a function of their exposure to the crisis of representation. To measure the crisis, we rely on the primary empirical indicators of the functionalist (volatility) and structuralist (polarization) traditions. We assume that a crisis of representation emerges gradually over time. Accordingly, we take the values for the 1990-2020 period, for which we have data from all 28 European countries. To classify European party systems according to the crisis they face, we present a scatter plot with the average values of volatility and polarization and weigh the cases by turnout, the key demand-side indicator of a crisis of representation. The data sources are the ones listed in the main text, except we take the overall level of polarization as captured by positions on the RILE scale. Figure 1 presents the results.
+
+As the figure shows, we find that the linear relationship between polarization and volatility is relatively weak ($R\textsuperscript{2}=0.16$). The two constitute mostly independent dimensions. Therefore, we use them to distinguish four constellations of a political crisis (for a similar discussion, see: Borbáth 2021). In this first scenario, accountability is hindered by the high turnover of parties. In the second scenario, we observe the party systems most able to provide \textit{clear choices} due to low volatility coupled with meaningful levels of polarization. In the third scenario, we observe party systems with low levels of volatility coupled with low polarization. In this case, accountability is hindered by the lack of clarity among competing formations. In the upper-left corner of the fourth scenario, we observe the most advanced levels of a crisis of representation, where both low levels of polarization and high levels of volatility hinder electoral accountability.
+
+In the most weakly populated first scenario, we selected Italy instead of France, to cover the southern European region. Among the countries in the second scenario, we selected Germany, as the largest country that mainly differs from Italy in exhibiting lower levels of volatility, but shows similar levels of polarization. Among the countries in the third scenario, we selected Austria, as the country that mainly differs from Germany in having a lower level of polarization, not in terms of volatility. Among the countries in the fourth scenario, we opted for Hungary, as the country that is mainly distinguished from Austria in terms of volatility, not in terms of polarization, and conversely, mainly distinguished from Italy in terms of polarization, not in terms of volatility. Fielding it in these four countries allows us to examine similarities in party branding at different levels, and to some extent, types of political crisis.
+
+The experiments are part of a longer survey on political attitudes, history of participation, issue positions, and socio-demographic indicators. We included all parties represented in the respective country's parliament and all those with measurable support in public opinion polls while fielding our surveys:
+\begin{itemize}
+\item{In Austria, the list of parties included the following: Social Democratic Party of Austria (SPÖ), Austrian People's Party (ÖVP), Freedom Party of Austria (FPÖ), The Greens – The Green Alternative (Grüne), NEOS - New Austria and Liberal Forum (NEOS), The Beer Party (BIER), MFG Austria – People Freedom Fundamental Rights (MFG).}
+\item{In Italy, the list of parties included the following: Brothers of Italy (FdI), Forza Italia (FI), Northern League (Lega), Democratic Party (PD), Five Star Movement (M5S), Greens and Left Alliance (AVS).}
+\item{In Hungary, the list of parties included the following: Fidesz - Alliance of Young Democrats (Fidesz), Democratic Coalition (DK), Momentum Movement (Momentum), Our Homeland Movement (Mi Hazánk), Jobbik – Conservatives (Jobbik), Hungarian Two-tailed Dog Party (MKKP), LMP – Hungary's Green Party (LMP), Hungarian Socialist Party (MSZP), Dialogue – The Greens' Party (PM).}
+\item{In Germany, the list of parties included the following: the Union parties (CDU/CSU); Social Democratic Party of Germany (SPD); Alliance 90/The Greens (Bündnis 90/Die Grünen); Alternative for Germany (AfD); Free Democratic Party (FDP); The Left (die Linke); Sahra Wagenknecht Alliance (BSW).}
+\end{itemize}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/country_scatter.png}
+\caption{Crisis of representation in Europe}
+\floatfoot{Note: We calculate the average value of volatility and polarization for the 1990-2023 period with equal weight for each country-year, regardless of the number of elections the respective country had. The vertical and horizontal values indicate the mean value on the respective axis.}
+\end{figure}
+
+\subsection{New party branding}
+
+To be able to gauge the issue preferences of each respondent, we asked them three questions on positions and one on salience. They are asked to place themselves on three ideological axes with the following items: 
+\begin{enumerate}
+\item{\textit{Now let's look at some of the political issues. Some want fewer taxes and contributions, even if that means fewer welfare state services; others want more welfare state services, even if that means more taxes and contributions. Where would you place yourself on this scale from 0 to 10?}}
+\begin{itemize}
+  \item{\textit{0: Less taxes and fewer welfare state benefits}}
+  \item{\textit{10: More welfare state benefits and more taxes}}
+\end{itemize}
+\item{\textit{Now we are talking about immigration opportunities for foreigners. Some people want to make it easier for foreigners to move in, others want to restrict the opportunities for foreigners to move in. Where would you place yourself on this scale from 0 to 10?}}
+\begin{itemize}
+  \item{\textit{0: Make it easier for foreigners to move in}}
+  \item{\textit{10: Restrict the influx of foreigners}}
+\end{itemize}
+\item{\textit{There are different views on climate policy. Some think that much more should be done in politics to combat climate change. Others think that policies to combat climate change have already gone much too far. Where would you place yourself on this scale from 0 to 10?}}
+\begin{itemize}
+  \item{\textit{0: Policymakers should do much more to combat climate change}}
+  \item{\textit{10: Policies to combat climate change have already gone much too far}}
+\end{itemize}
+\end{enumerate}
+The three questions on positions are followed by an item on salience: 
+\begin{itemize}
+  \item[]\textit{If you had to choose one, which of the three types of issues do you think should be among the priorities of the \texttt{<country>}'s federal government?}
+  \begin{itemize}
+    \item{\textit{Taxes and social benefits}}
+    \item{\textit{Immigration opportunities for foreigners}}
+    \item{\textit{Climate policy}}
+  \end{itemize}
+\end{itemize}
+The experiment is introduced with the following text: 
+\begin{itemize}
+\item[]{\textit{Now we would like you to imagine that a new party enters the \texttt{<country>}'s parliament. In the following, we want to know what preferences you would have regarding the appearance of this new political organization. Below you can see three versions of the profiles of two groups (Group A and Group B). Please indicate how much you would sympathize with these organizations and which one you would be most likely to vote for!}}
+\end{itemize}
+
+The respondents were asked to complete three questions after each pair of profiles. On the one hand, they were separately asked to rank the two profiles: \textit{how much do you support scenario \texttt{<A/B>} on a scale from 0 to 10?}. On the other hand, they were asked to choose between them: \textit{Which of the two scenarios would you be more likely to vote for?}.
+
+\subsection{Party re-branding}
+
+The experiment focuses on the effect of existing parties' rebranding efforts. We focused on attitudes towards rebranding by the party the respondent identified with the most or had the highest probability to vote for.  We opted to hold partisanship constant to estimate the marginal effect of branding features net of party identification/ vote intention. Otherwise, partisanship would likely have trumped all other effects.
+
+To gain information on respondents' partisanship, we first ask them for a standard item on party identification: \textit{In \texttt{<country>}, many people orientate themselves towards a particular party for a long time, even if they occasionally vote for a different party. What about you, do you generally lean towards a particular party? If so, which one?}
+\begin{itemize}
+  \item{Party A}
+  \item{Party B}
+  \item{Party C}
+\end{itemize}
+In the case of respondents who indicate that there is no party they identify with, we take the party they have the highest probability to vote for. Accordingly, we include a probability to vote battery: \textit{There are a number of political parties in \texttt{<country>}, each of which would like to get your vote. For each of the following parties, please indicate how likely it is that you will ever vote for them}
+\begin{itemize}
+  \item{Party A (0-10)}
+  \item{Party B (0-10)}
+  \item{Party C (0-10)}
+\end{itemize}
+In the case of respondents who do not have a party they identify with and answer with 0 as their probability to vote for any of the parties, the experiment is skipped.\footnote{The effective sample size in Austria 2068, in Italy: 1870; in Hungary: 1961; in Germany: 2781}
+
+The experiment is introduced with the following text: \textit{Now we would like you to imagine that the \texttt{<party>} is considering a change in its image. In the following, we ask you for your preferences regarding possible re-branding scenarios. Below we show you three times the profile of two alternative images the \texttt{<party>} is considering (Scenario A and Scenario B). Please indicate how much you support the alternative scenarios and which one you would rather vote for!}
+
+The respondents displayed the profiles of Scenario A and Scenario B. The profiles read:
+
+\begin{table}[H]
+\centering
+\caption*{}
+\begin{tabular}{ll} 
+\toprule
+\textbf{Scenario A} & \textbf{Scenario B} \\ 
+\midrule
+\begin{tabular}[c]{@{}l@{}}The \textless{}party\textgreater{} changes its image by:\\ \\ ~ -~ \textless{}Name\textgreater{}\\ ~ -~ \textless{}Organization\textgreater{}\\ ~ -~ promises \textless{}Action form\textgreater{} to \\ ~ ~ ~ represent their program.\\ \\Many support the plan, but there \\ are also those who argue that the \\ proposal threatens the \textless{}party's\textgreater{} \\ hard-earned reputation. \\ Sympathizers and members of \\ the public are encouraged to\\ voice their opinions!\end{tabular} & \begin{tabular}[c]{@{}l@{}}The \textless{}party\textgreater{} changes its image by:\\ \\ ~ -~ \textless{}Name\textgreater{}~ \\ ~ -~ \textless{}Organization\textgreater{}~ \\ ~ -~ promises \textless{}Action form\textgreater{} to\\ ~ ~ ~ represent their program.\\ \\Many support the plan, but there\\ are~also~those who argue that the\\ proposal~threatens~the \textless{}party's\textgreater{}\\ hard-earned~reputation.\\ Sympathizers and members of\\ the public are encouraged to \\ voice their opinions!\end{tabular} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two profiles were randomly generated (including the order of the bullet points) from a set of predefined values. Table \ref{exp_2_values} presents these predefined values. The name treatment is conditional on the current name of the party.
+
+\begin{table}[H]
+\centering
+\caption{Design of the parties re-branding conjoint experiment}
+\label{exp_2_values}
+\begin{tblr}{
+  cell{2}{1} = {r=3}{},
+  cell{5}{1} = {r=3}{},
+  cell{8}{1} = {r=3}{},
+  vlines,
+  hline{1,5,8,11} = {-}{},
+  hline{2} = {-}{0.08em},
+  hline{3-4,6-7,9-10} = {2-3}{},
+}
+\textbf{Attribute} & \textbf{Level} & \textbf{Formulation}\\
+Name & None & empty\\
+ & Party & {Conditional on the name of the party:\\~-~ \textbf{changes its name} and \textbf{deletes} the\\~ ~ word \textbf{party} from its name\\~-~~\textbf{changes its name} and now \textbf{calls }\\\textbf{~ ~~itself a party}.}\\
+ & Movement & {Conditional on the name of the party:\\~-~~\textbf{changes its name} and \textbf{deletes} the\\~ ~~word \textbf{movement} from its name\\~-~~\textbf{changes its name} and now \textbf{calls }\\\textbf{~ ~~itself a movement}.\textbf{}}\\
+Organization & None & empty\\
+ & {Movement party \\organization} & {invest in closer ties with \textbf{civil society }\\\textbf{organizations} and a stronger presence\\of \textbf{active members} at the local level.}\\
+ & {Media party \\organization} & {establish a \textbf{strong personality} at the\\top and communicate more intensively \\via\textbf{ classic and social media.}}\\
+Action form & None & empty\\
+ & Demonstrations & {intensify the struggle outside the \\parliament and organize~\textbf{public }\\\textbf{demonstrations}}\\
+ & Parliament & {focus more on their work and \\advances in \textbf{parliament}}
+\end{tblr}
+\end{table}
+
+Like before, the respondents were asked to complete three questions after each pair of profiles. On the one hand, they were separately asked to rank the two profiles: \textit{how much do you support the described group \texttt{<A/B>} on a scale from 0 to 10?}. On the other hand, they were asked to make a choice between them: \textit{Which of the two organizations would you be more likely to vote for?}.
+
+The main results of the experiment are shown by Figure \ref{conjoint2_main}:
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_main_tradeoff.eps}
+\caption{Parties rebranding conjoint experiment}
+\label{conjoint2_main}
+\end{figure}
+
+\newpage 
+
+\section{Appendix E: Additional analysis - survey experiments}
+
+\setcounter{figure}{0}
+\setcounter{table}{0}
+
+\subsection{Continuous scales as dependent variables}
+
+\subsubsection{New parties}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_main_cont.eps}
+\caption{New party branding conjoint experiment - continuous dependent variable}
+\end{figure}
+
+\subsubsection{Re-branding parties}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_main_cont.eps}
+\caption{Parties re-branding conjoint experiment - continuous dependent variable}
+\end{figure}
+
+\subsection{Country-specific analysis}
+
+\subsubsection{New parties}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_main_tradeoff_Austria.eps}
+\caption{Austria: New party branding conjoint experiment}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_main_tradeoff_Italy.eps}
+\caption{Italy: New party branding conjoint experiment}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_main_tradeoff_Hungary.eps}
+\caption{Hungary: New party branding conjoint experiment}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_main_tradeoff_Germany.eps}
+\caption{Germany: New party branding conjoint experiment}
+\end{figure}
+
+\subsubsection{Re-branding parties}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_main_tradeoff_Austria.eps}
+\caption{Austria: Parties re-branding conjoint experiment}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_main_tradeoff_Italy.eps}
+\caption{Italy: Parties re-branding conjoint experiment}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_main_tradeoff_Hungary.eps}
+\caption{Hungary: Parties re-branding conjoint experiment}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_main_tradeoff_Germany.eps}
+\caption{Germany: Parties re-branding conjoint experiment}
+\end{figure}
+
+\newpage
+
+\subsection{Survey items used for the analysis of heterogeneous effects}
+
+\paragraph{Satisfaction with democracy:}
+\textit{How satisfied are you on the whole with the way democracy works in \texttt{<country>}?} 
+\begin{itemize}
+  \item{0: Very unsatisfied} 
+  \item{10: Very satisfied}
+\end{itemize}
+
+\paragraph{Left-right scale:}
+\textit{In politics, people sometimes talk about ``left'' and ``right''. Where on the scale would you classify yourself if 0 is left and 10 is right?} 
+\begin{itemize}
+  \item{0: Left}
+  \item{10: Right}
+\end{itemize}
+
+\paragraph{Strength of party identification:}
+\textit{Do you feel very attached to this party, quite attached or are you just a sympathiser?} - the item is included after the party identification question introduced in Appendix C.
+\begin{itemize}
+\item{Very attached}
+\item{Quite attached}
+\item{Only sympathiser}
+\item{Don't know}
+\end{itemize}
+
+\paragraph{Participation in demonstrations:}
+\textit{There are various ways to improve things in Germany or to prevent something from going wrong. How often in the last 12 months have you participated in an authorized protest in a public space (e.g., demonstration, human chain)?}
+\begin{itemize}
+  \item{Never}
+  \item{Rarely}
+  \item{Sometimes}
+  \item{Often}
+  \item{Very often}
+\end{itemize}
+
+\paragraph{Internal efficacy:}
+\textit{How much do you trust your own abilities to participate in political events?}
+\begin{itemize}
+  \item{I do not trust my abilities at all}
+  \item{I trust my abilities a little}
+  \item{I trust my abilities quite a bit}
+  \item{I trust my abilities a lot}
+  \item{I fully trust my abilities}
+\end{itemize}
+
+\paragraph{External efficacy:}
+\textit{What do you think: To what extent does the political system in Germany give people like you the opportunity to influence politics?}
+\begin{itemize}
+  \item{Not at all}
+  \item{Very little}
+  \item{Somewhat}
+  \item{Strongly}
+  \item{Very strongly}
+\end{itemize}
+
+\paragraph{Populist attitudes:}
+We included a number of items in a battery designed to measure populist attitudes. The items are introduced with the following text: \textit{Please indicate for each of the following statements to what extent you agree or disagree.}
+
+\begin{itemize}
+  \item \textbf{pop\_comp:} \textit{What is called a compromise in politics is, in reality, just a betrayal of principles.}
+  \item \textbf{pop\_peop:} \textit{The people, and not the politicians, should make the most important political decisions.}
+  \item \textbf{pop\_parl:} \textit{The politicians in the \texttt{<national parliament>} must follow the will of the people.}
+  \item \textbf{pop\_elit:} \textit{The political differences between the elites and the people are greater than the differences within the people.}
+  \item \textbf{pop\_ctzn:} \textit{Citizens would represent my interests better than professional politicians.}
+  \item \textbf{pop\_talk:} \textit{Politicians talk too much and do too little.}
+  \item \textbf{pop\_opin:} \textit{Most politicians are not interested in the opinion of the citizens.}
+  \item \textbf{pop\_prob:} \textit{The biggest problem in \texttt{<country>} is the politicians.}
+  \item \textbf{pop\_rich:} \textit{Most politicians only care about the interests of the rich and powerful.}
+  \item \textbf{pop\_trust:} \textit{Most politicians are trustworthy.}
+  \item \textbf{pop\_lead:} \textit{A strong leader is good for \texttt{<country>}, even if they do not always follow the rules to get things done.}
+  \item \textbf{pop\_ordi:} \textit{Politicians care about what ordinary people think.}
+\end{itemize}
+
+All items are measured on the same scale:
+
+\begin{itemize}
+  \item Completely disagree
+  \item Rather disagree
+  \item Neutral/Mixed
+  \item Rather agree
+  \item Completely agree
+  \item No answer
+\end{itemize}
+
+To estimate an underlying dimension of populist attitudes, we rely on principal component analysis with varimax rotation. We decided for a one factor solution and ended up excluding three items that did not integrate well in the attitudinal structure defined by the other items. The three excluded items are:
+\begin{itemize}
+  \item \textbf{pop\_trust:} \textit{Most politicians are trustworthy.}
+  \item \textbf{pop\_lead:} \textit{A strong leader is good for \texttt{<country>}, even if they do not always follow the rules to get things done.}
+  \item \textbf{pop\_ordi:} \textit{Politicians care about what ordinary people think.}
+\end{itemize}
+Table \ref{populist_factor_loadings} show the results of the initial and of the revised factor solution:
+
+\begin{table}[ht]
+\centering
+\caption{Factor Loadings for Extensive and Reduced Models}
+\label{populist_factor_loadings}
+\begin{tabular}{lcc}
+\hline
+\textbf{Item} & \textbf{Extensive Model} & \textbf{Reduced Model} \\
+\hline
+pop\_comp   & 0.596  & 0.596 \\
+pop\_peop   & 0.686  & 0.692 \\
+pop\_parl   & 0.678  & 0.689 \\
+pop\_elit   & 0.653  & 0.662 \\
+pop\_ctzn   & 0.743  & 0.747 \\
+pop\_talk   & 0.759  & 0.762 \\
+pop\_opin   & 0.796  & 0.794 \\
+pop\_prob   & 0.707  & 0.703 \\
+pop\_rich   & 0.741  & 0.736 \\
+pop\_trust  & -0.169 &  \\[1mm]
+pop\_lead   & 0.347  &  \\[1mm]
+pop\_ordi   & -0.165 &  \\
+\hline
+SS loadings     & 4.700  & 4.552 \\
+Proportion Var  & 0.392  & 0.506 \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Trust:}
+We included a number of items in a battery designed to measure trust. The items are introduced with the following text: \textit{Please indicate on a scale from 0 to 10 how much you personally trust each of the following institutions. 0 means that you do not trust an institution at all, and 10 means that you have full trust. Trust in…}
+
+\begin{itemize}
+  \item \textbf{trust\_prtes} \textit{The political parties}
+  \item \textbf{trust\_gvrmnt} \textit{The \texttt{<country's>} federal government}
+  \item \textbf{trust\_prlmnt} \textit{The \texttt{<country's Parliament>}}
+  \item \textbf{trust\_eu} \textit{The European Union}
+\end{itemize}
+
+These items are measured on the same scale:
+
+\begin{itemize}
+  \item 0
+  \item ...
+  \item 10
+\end{itemize}
+
+In addition we included an item on inter-personal \textbf{trust}: \textit{What do you think of the following statement: In general, most people can be trusted.}. Measure on a five points scale:
+\begin{itemize}
+\item \textit{Does not apply at all}
+\item \textit{Applies very little}
+\item \textit{Applies somewhat}
+\item \textit{Applies strongly}
+\item \textit{Applies very strongly}
+\end{itemize}
+
+To estimate an underlying dimension of trust, we rely on principal component analysis with varimax rotation. In addition to the five items above, we also include pop\_trust, an item from the populism battery previously introduced. We decided for a one factor solution, shown in table \ref{trust_factor_loadings}:
+
+
+\begin{table}[ht]
+\centering
+\caption{Factor Loadings for Trust Items on PC1}
+\label{trust_factor_loadings}
+\begin{tabular}{lc}
+\hline
+\textbf{Item}       & \textbf{Factor Loading} \\
+\hline
+trust\_prtes & 0.891 \\
+trust\_gvrmnt& 0.895 \\
+trust\_prlmnt& 0.918 \\
+trust\_eu    & 0.712 \\
+trust        & 0.511 \\
+pop\_trust   & 0.604 \\
+\hline
+SS loadings     & 3.570 \\
+Proportion Var  & 0.595 \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Issue salience:} Same item as the one introduced as a follow-up to the ideological positions prior to the new party experiment (see Appendix C)
+
+\paragraph{Partisanship:} Same item as the one introduced prior to the party re-branding experiment (see Appendix C)
+
+\newpage
+
+\subsection{Heterogeneous effects}
+
+\subsubsection{Satisfaction with democracy}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_heteff_satdem_tradeoff.eps}
+\caption{Heterogeneous effects by satisfaction with democracy (new party branding)}
+%\floatfoot{We included [0, 2] in "Very dissatisfied", [3, 4] in "Somewhat dissatisfied", 5 in "Undecided", [6, 7] in "Somewhat satisfied", [8, 10] in "Very satisfied"}
+\floatfoot{We display the values for very dissatisfied (values between [0, 2] on the original scale) and very satisfied (values between [8, 10] on the original scale)}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_heteff_satdem_tradeoff.eps}
+\caption{Heterogeneous effects by satisfaction with democracy (parties re-branding)}
+%\floatfoot{We included [0, 2] in "Very dissatisfied", [3, 4] in "Somewhat dissatisfied", 5 in "Undecided", [6, 7] in "Somewhat satisfied", [8, 10] in "Very satisfied"}
+\floatfoot{We display the values for very dissatisfied (values between [0, 2] on the original scale) and very satisfied (values between [8, 10] on the original scale)}
+\end{figure}
+
+\subsubsection{Left-right ideology}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_heteff_ideol_tradeoff.eps}
+\caption{Heterogeneous effects by left-right (new party branding)}
+%\floatfoot{We included [0, 1] in "Far left", [2, 4] in "Center left", 5 in "Center", [6, 8] in "Center right", [9, 10] in "Far right".}
+\floatfoot{We display the values for far left (values between [0, 1] on the original scale); center (value of 5 on the original scale); and far right (values between [9, 10] on the original scale).}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_heteff_ideol_tradeoff.eps}
+\caption{Heterogeneous effects by left-right (parties re-branding)}
+%\floatfoot{We included [0, 1] in "Far left", [2, 4] in "Center left", 5 in "Center", [6, 8] in "Center right", [9, 10] in "Far right".}
+\floatfoot{We display the values for far left (values between [0, 1] on the original scale); center (value of 5 on the original scale); and far right (values between [9, 10] on the original scale).}
+\end{figure}
+
+\subsubsection{Strength of party identification}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_heteff_pid_strength_tradeoff.eps}
+\caption{Heterogeneous effects by the strength of party identification (new party branding)}
+\floatfoot{We display the values for ``very attached''; ``only sympathizer''; and ``don't know'' or no ``party identification''.}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_heteff_pid_strength_tradeoff.eps}
+\caption{Heterogeneous effects by the strength of party identification (parties re-branding)}
+\floatfoot{We display the values for ``very attached''; ``only sympathizer''; and ``don't know'' or no ``party identification''.}
+\end{figure}
+
+\subsubsection{Participation in demonstrations}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_heteff_act_demo_tradeoff.eps}
+\caption{Heterogeneous effects by participation in demonstrations (new party branding)}
+\floatfoot{We display the values for "never"; and the values for "often" or "very often".}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_heteff_act_demo_tradeoff.eps}
+\caption{Heterogeneous effects by participation in demonstrations (parties re-branding)}
+\floatfoot{We display the values for "never"; and the values for "often" or "very often".}
+\end{figure}
+
+\subsubsection{Internal efficacy}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_heteff_int_eff_tradeoff.eps}
+\caption{Heterogeneous effects by internal efficacy (new party branding)}
+\floatfoot{We display the values for "not at all"; and the values for "a lot".}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_heteff_int_eff_tradeoff.eps}
+\caption{Heterogeneous effects by internal efficacy (parties re-branding)}
+\floatfoot{We display the values for "not at all"; and the values for "a lot".}
+\end{figure}
+
+\subsubsection{External efficacy}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_heteff_ext_eff_tradeoff.eps}
+\caption{Heterogeneous effects by external efficacy (new party branding)}
+\floatfoot{We display the values for "not at all"; and the values for "strong" or "very strong".}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_heteff_ext_eff_tradeoff.eps}
+\caption{Heterogeneous effects by external efficacy (parties re-branding)}
+\floatfoot{We display the values for "not at all"; and the values for "strong" or "very strong".}
+\end{figure}
+
+\subsubsection{Populist attitudes}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_heteff_populism_cat_tradeoff.eps}
+\caption{Heterogeneous effects by populist attitudes (new party branding)}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_heteff_populism_cat_tradeoff.eps}
+\caption{Heterogeneous effects by populist attitudes (parties re-branding)}
+\end{figure}
+
+\subsubsection{Trust}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_heteff_trust_cat_tradeoff.eps}
+\caption{Heterogeneous effects by trust (new party branding)}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_heteff_trust_cat_tradeoff.eps}
+\caption{Heterogeneous effects by trust (parties re-branding)}
+\end{figure}
+
+\subsubsection{Issue salience - new parties}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ1_imp_issue_tradeoff.eps}
+\caption{Heterogeneous effects by issue salience (new party branding)}
+\end{figure}
+
+\subsubsection{Partisanship - re-branding parties}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_by_party_tradeoff_Austria.eps}
+\caption{Austria: Heterogeneous effects by partisanship (parties re-branding)}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_by_party_tradeoff_Italy.eps}
+\caption{Italy: Heterogeneous effects by partisanship (parties re-branding)}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_by_party_tradeoff_Hungary.eps}
+\caption{Hungary: Heterogeneous effects by partisanship (parties re-branding)}
+\end{figure}
+
+\begin{figure}[H]
+\includegraphics[width=\textwidth]{./Figures/CJ2_by_party_tradeoff_Germany.eps}
+\caption{Germany: Heterogeneous effects by partisanship (parties re-branding)}
+\end{figure}
+
+\end{document}

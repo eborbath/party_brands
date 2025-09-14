@@ -1,0 +1,1440 @@
+---
+title: "Step3: descriptive analysis"
+author: "Endre Borbáth and Swen Hutter"
+output: html_document
+---
+
+# Loading packages
+
+```{r setup, include=FALSE}
+rm(list = ls()) 
+
+library(readxl)
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(haven)
+library(forcats)
+library(ggrepel)
+library(cowplot)
+library(kableExtra)
+library(corrplot)
+library(tidytext)
+library(sparkline)
+library(ggtext)
+library(here)
+
+set.seed(1991)
+
+load("dataset_long.Rdata")
+
+range01 <- function(x){(x-min(x, na.rm = TRUE))/(max(x, na.rm = TRUE)-min(x, na.rm = TRUE))}
+
+dat <- d_lng %>% 
+  arrange(country, party_id, year)
+
+colors <- thematic::okabe_ito(8)[-6]
+
+```
+
+# Analysis in the main text
+
+
+## Figure 1: Distribution of party names over time (1945-2023)
+
+```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+
+## Organizational and ideological dimensions separated - one plot - see descriptive analysis
+
+dat_plot1 <- dat %>% 
+  mutate(region=case_when(country_name %in% c("Bulgaria", "Czech Republic", "Czechia", 
+                                              "Estonia", "Croatia", "Hungary", 
+                                              "Lithuania", "Latvia", "Poland", 
+                                              "Romania", "Slovakia", 
+                                              "Slovenia") ~ "Eastern EU",
+                          country_name %in% c("Austria", "Belgium", "Switzerland", 
+                                              "Germany", "Denmark", "Spain", 
+                                              "Finland", "France", "United Kingdom", 
+                                              "Greece", "Ireland", "Italy", 
+                                              "Luxembourg", "Netherlands", 
+                                              "Norway", "Portugal", 
+                                              "Sweden") ~ "Western EU",
+                          TRUE ~ as.character(NA))) %>% 
+  filter(region=="Western EU") %>% 
+  mutate(broad_types=case_when(grepl("Ideological", typology) ~ "Ideological names",
+                               grepl("Nonideological", typology) ~ "Nonideological names")) %>% 
+  select(year, broad_types) %>% 
+  group_by(year) %>%
+  mutate(total_parties=n()) %>%
+  ungroup(.) %>% 
+  group_by(year, broad_types) %>% 
+  mutate(nr_parties=n()) %>%
+  ungroup(.) %>%
+  select(year, broad_types, total_parties, nr_parties) %>%
+  distinct(.) %>% 
+  mutate(share_parties=nr_parties*100/total_parties) %>% 
+  select(-total_parties, -nr_parties)
+
+full_grid <- expand.grid(year=unique(dat_plot1$year), 
+                         broad_types=unique(dat_plot1$broad_types))
+
+dat_plot1 <- left_join(full_grid, dat_plot1) %>% 
+  mutate(share_parties=ifelse(is.na(share_parties), 0, share_parties)) %>% 
+  mutate(dimension="Ideological dimension") %>% 
+  mutate(broad_types=factor(broad_types, levels=c("Ideological names", "Nonideological names")))
+
+timeline1 <- ggplot(dat_plot1, aes(x=year, y = share_parties, linetype=broad_types, color=broad_types)) + 
+  geom_line(size=0.75) +
+  facet_wrap(~dimension, ncol=1) +
+  ylab("Proportion from all names") +
+  scale_x_discrete(limits=(seq(1945, 2023, 10))) +
+  scale_color_manual(values=c("#0072B2", "#D55E00", "#009E73", "#CC79A7",  "#56B4E9")) +
+  scale_linetype_manual(values=c("solid", "dotdash", "solid", "twodash", "dashed")) +
+  guides(color = guide_legend(ncol =2, byrow=TRUE),
+         linetype = guide_legend(ncol=2, byrow=TRUE)) +
+  theme_linedraw() + 
+  expand_limits(y = 0) +
+  theme(
+    legend.title = element_blank(), 
+    legend.position = "bottom",
+    legend.margin = margin(),
+    axis.title.x = element_blank(),
+    legend.key.width = unit(1, "cm")
+  )
+   
+
+timeline1
+
+dat_plot2 <- dat %>% 
+  mutate(region=case_when(country_name %in% c("Bulgaria", "Czech Republic", "Czechia", 
+                                              "Estonia", "Croatia", "Hungary", 
+                                              "Lithuania", "Latvia", "Poland", 
+                                              "Romania", "Slovakia", 
+                                              "Slovenia") ~ "Eastern EU",
+                          country_name %in% c("Austria", "Belgium", "Switzerland", 
+                                              "Germany", "Denmark", "Spain", 
+                                              "Finland", "France", "United Kingdom", 
+                                              "Greece", "Ireland", "Italy", 
+                                              "Luxembourg", "Netherlands", 
+                                              "Norway", "Portugal", 
+                                              "Sweden") ~ "Western EU",
+                          TRUE ~ as.character(NA))) %>% 
+  filter(region=="Western EU") %>% 
+  mutate(broad_types=case_when(grepl(" party", typology) ~ "Party names",
+                               grepl("nonparty", typology) ~ "Nonparty names",
+                               grepl("movement", typology) ~ "Movement names")) %>% 
+  select(year, broad_types) %>% 
+  group_by(year) %>%
+  mutate(total_parties=n()) %>%
+  ungroup(.) %>% 
+  group_by(year, broad_types) %>% 
+  mutate(nr_parties=n()) %>%
+  ungroup(.) %>%
+  select(year, broad_types, total_parties, nr_parties) %>%
+  distinct(.) %>% 
+  mutate(share_parties=nr_parties*100/total_parties) %>% 
+  select(-total_parties, -nr_parties)
+
+full_grid <- expand.grid(year=unique(dat_plot2$year), 
+                         broad_types=unique(dat_plot2$broad_types))
+
+dat_plot2 <- left_join(full_grid, dat_plot2) %>% 
+  mutate(share_parties=ifelse(is.na(share_parties), 0, share_parties)) %>% 
+  mutate(dimension="Organizational dimension") %>% 
+  mutate(broad_types=factor(broad_types, levels=c("Party names", "Nonparty names", "Movement names")))
+
+timeline2 <- ggplot(dat_plot2, aes(x=year, y = share_parties, linetype=broad_types, color=broad_types)) + 
+  geom_line(size=0.75) +
+  facet_wrap(~dimension, ncol=1) +
+  ylab("Proportion from all names") +
+  scale_x_discrete(limits=(seq(1945, 2023, 10))) +
+  scale_color_manual(values=c("#009E73", "#CC79A7",  "#56B4E9")) +
+  scale_linetype_manual(values=c("solid", "twodash", "dashed")) +
+  guides(color = guide_legend(ncol =3, byrow=TRUE),
+         linetype = guide_legend(ncol=3, byrow=TRUE)) +
+  theme_linedraw() + 
+  expand_limits(y = 0) +
+  theme(
+    legend.title = element_blank(), 
+    legend.position = "bottom",
+    # legend.justification = "left",   # Left-justify the legend *inside* the overall plot area
+    # legend.box.just = "left",    # Align the boxes/items to the left as well
+    legend.margin = margin(),
+    axis.title.x = element_blank(),
+    legend.key.width = unit(1, "cm")
+  )
+
+timeline2
+
+cowplot::plot_grid(timeline1, timeline2, ncol=1)
+
+ggsave(plot=last_plot(),
+      filename = "Figure1.png",
+      scale = 2,
+      path = "main_text/figures",
+      width = 6, height = 7, dpi=400, units="cm")
+  
+
+```
+
+## Figure 2: Distribution of party name types in Europe
+
+```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+
+library(DiagrammeR)
+library(DiagrammeRsvg)
+library(rsvg)
+
+# Create the graph
+decision_tree <- grViz("
+digraph decision_tree {
+
+  # Node definitions with labels
+  node [shape = box, style = filled, color = white]
+  A [label = <Ideological<br/>name>]
+  B [label = <Nonideological<br/>name>]
+A1 [label = <<b>Classical<br/>party name</b><br/><font point-size='9'>e.g., Conservative<br/>and Unionist<br/>Party (UK)</font><br/>22% (178)>]
+A2 [label = <Nonparty<br/>name<br/><font point-size='9'>e.g., Christian-<br/>Democratic<br/>Union (DE)</font><br/>23% (184)>]
+A3 [label = <Movement<br/>name<br/><font point-size='9'>e.g., Panhellenic<br/>Socialist<br/>Movement (GR)</font><br/>4% (36)>]
+B1 [label = <Party<br/>name<br/><font point-size='9'>e.g., Democratic<br/>Party (IT)</font><br/>14% (109)>]
+B2 [label = <<b>Nonparty<br/>name</b><br/><font point-size='9'>e.g., Law and<br/>Justice (PL)</font><br/>30% (240)>]
+B3 [label = <<b>Movement<br/>name</b><br/><font point-size='9'>e.g., Five Star<br/>Movement (IT)</font><br/>7% (54)>]
+
+  # Connections between nodes
+  node [shape = box, style = filled, color = white]
+  root [label = 'The name of the party']
+
+  root -> A
+  root -> B
+  A -> A1
+  A -> A2
+  A -> A3
+  B -> B1
+  B -> B2
+  B -> B3
+}
+")
+
+# Export the graph to a PNG file
+
+svg_code <- export_svg(decision_tree)
+
+rsvg_png(charToRaw(svg_code), file = "main_text/figures/Figure2.png", width = 7200, height = 3320)
+
+```
+
+
+```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+
+## Table with the exact numbers
+
+dat_plot1 <- dat %>% 
+  select(party_id, typology) %>% 
+  group_by(party_id, typology) %>%
+  unique() %>% 
+  ungroup(.) %>% 
+  mutate(total_parties=n()) %>%
+  group_by(typology) %>% 
+  mutate(nr_parties=n()) %>%
+  ungroup(.) %>%
+  select(typology, total_parties, nr_parties) %>% 
+  distinct(.) 
+
+dat_plot2 <- dat_plot1
+
+dat_plot1 <- dat_plot1 %>% 
+  mutate(share_parties=nr_parties*100/total_parties) %>% 
+  mutate(share_abs_number=paste0(round(share_parties, 0), "% (", nr_parties, ")")) %>%
+  select(-total_parties, -nr_parties, -share_parties) %>%
+  distinct(.) %>% 
+  rename(Type=typology) %>%
+  select(Type, share_abs_number) %>% 
+  arrange(Type)
+
+dat_plot2 <- dat_plot2 %>% 
+  mutate(nr_parties=sum(nr_parties, na.rm=TRUE)) %>%
+  select(-typology) %>% 
+  distinct() %>% 
+  mutate(share_parties=nr_parties*100/total_parties) %>% 
+  mutate(share_abs_number=paste0(round(share_parties, 0), "% (", nr_parties, ")")) %>%
+  select(-total_parties, -nr_parties, -share_parties) %>%
+  mutate(Type="Overall") %>% 
+  select(Type, share_abs_number) 
+
+dat_plot1 <- bind_rows(dat_plot1, dat_plot2) %>% 
+  mutate(across(everything(), ~ ifelse(is.na(.), "", .)))
+
+table_latex <-  kbl(dat_plot1,
+      caption = "Distribution of party brand types (1945-2023) \\label{tab:average_distributions}",
+      booktabs = T, format = "latex", linesep = "",
+      col.names = c("Type", "Share (count)")) %>% 
+  kable_styling(latex_options = "HOLD_position") %>%   # Change will be here
+  row_spec(0, bold = TRUE) %>%
+  column_spec(1, bold = ifelse(dat_plot1$Type == "Overall", TRUE, FALSE)) %>%
+  row_spec(nrow(dat_plot1)-1, hline_after = TRUE) 
+
+cat(table_latex)
+  
+```
+
+
+## Figure 3: Distribution of party names by party family (1945-2023)
+
+```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+
+dat_plot1 <- dat %>% 
+  mutate(indic=ifelse(typology=="Ideological party", 1, 0)) %>% 
+  group_by(party_id, family_name) %>% 
+  mutate(nr_parties=sum(indic, na.rm=TRUE)) %>% 
+  select(family_name, nr_parties, party_id) %>% 
+  unique(.) %>% 
+  ungroup(.) %>% 
+  mutate(indic=ifelse(nr_parties>0, 1, 0)) %>% 
+  group_by(family_name) %>% 
+  mutate(total=n()) %>% 
+  mutate(indic=sum(indic)) %>%
+  select(-party_id, -nr_parties) %>% 
+  unique(.) %>% 
+  mutate(share=indic/total*100) %>% 
+  mutate(no_party="Ideological party") %>% 
+  rename(DV=no_party) %>%
+  ungroup(.) %>% 
+  arrange(share) %>% 
+  mutate(ranking=row_number())
+
+dat_plot2 <- dat %>% 
+  mutate(indic=ifelse(typology=="Nonideological nonparty", 1, 0)) %>%  
+  group_by(party_id, family_name) %>% 
+  mutate(nr_parties=sum(indic, na.rm=TRUE)) %>% 
+  select(family_name, nr_parties, party_id) %>% 
+  unique(.) %>% 
+  ungroup(.) %>% 
+  mutate(indic=ifelse(nr_parties>0, 1, 0)) %>% 
+  group_by(family_name) %>% 
+  mutate(total=n()) %>% 
+  mutate(indic=sum(indic)) %>%
+  select(-party_id, -nr_parties) %>% 
+  unique(.) %>% 
+  mutate(share=indic/total*100) %>% 
+  mutate(action_based="Nonideological nonparty") %>% 
+  rename(DV=action_based)
+
+dat_plot3 <- dat %>% 
+  mutate(indic=ifelse(typology=="Nonideological movement", 1, 0)) %>% 
+  group_by(party_id, family_name) %>% 
+  mutate(nr_parties=sum(indic, na.rm=TRUE)) %>% 
+  select(family_name, nr_parties, party_id) %>% 
+  unique(.) %>% 
+  ungroup(.) %>% 
+  mutate(indic=ifelse(nr_parties>0, 1, 0)) %>% 
+  group_by(family_name) %>% 
+  mutate(total=n()) %>% 
+  mutate(indic=sum(indic)) %>%
+  select(-party_id, -nr_parties) %>% 
+  unique(.) %>%  
+  mutate(share=indic/total*100) %>% 
+  mutate(catch_all_ref="Nonideological movement") %>% 
+  rename(DV=catch_all_ref)
+
+dat_plot <- bind_rows(dat_plot1, dat_plot2, dat_plot3) %>% 
+  select(-ranking) %>% 
+  ungroup(.) %>% 
+  filter(!(family_name %in% c("to be coded", "Special issue", "no family"))) %>% 
+  mutate(DV=case_when(DV=="Ideological party" ~ "Classical party\nname",
+                      DV=="Nonideological nonparty" ~ "Nonideological\nnonparty name",
+                      DV=="Nonideological movement" ~ "Nonideological\nmovement name")) %>%
+  mutate(DV=factor(DV, levels=c("Classical party\nname", "Nonideological\nnonparty name", 
+                                "Nonideological\nmovement name"))) %>% 
+  # mutate(DV=fct_rev(DV)) %>% 
+  mutate(family_name=factor(family_name, levels=c("Communist/Socialist", "Social democracy",
+                                                  "Green/Ecologist", "Christian democracy", "Liberal", 
+                                                  "Conservative", "Agrarian", "Right-wing"))) %>% 
+  mutate(family_name=fct_rev(family_name))
+  
+rm(dat_plot1, dat_plot2, dat_plot3, totals)
+
+ggplot(dat_plot, aes(y = family_name, x=share)) + #, fill=color_indic
+  geom_col(color="black", show.legend = FALSE) + 
+  facet_wrap(~DV, scales = "free_x", ncol=3) +
+  scale_y_reordered() +
+  xlab("Proportion of parties (pp. within party family)") +
+  theme_linedraw() +
+  guides(fill=guide_legend(nrow=1,byrow=TRUE, reverse = TRUE)) +
+  theme(legend.title=element_blank(), 
+        legend.position="none",
+        axis.title.y=element_blank())
+
+ggsave(plot=last_plot(),
+      filename = "Figure3.png",
+      path = "main_text/figures",
+      scale = 3,
+      width = 6, height = 2.5, dpi=400, units="cm")
+
+```
+
+## Table 2: Distribution of brands by party type
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+dat <- dat %>% 
+  mutate(dep_vars=case_when(typology=="Ideological party" ~ 1,
+                            TRUE ~ 0))
+
+groupped_share <- function(data, group_var) {
+
+group_var <- enquo(group_var)
+
+dat_plot <- dat %>% 
+  mutate(past_pm = case_when(past_pm == "has been/is pm party" ~ 1,
+                             past_pm == "no pm party" ~ 0),
+         mainstream_family = case_when(family_name_short %in% c("chr", "con", "lib", "soc") ~ 1,
+                                       TRUE ~ as.numeric(0)),
+         opp_party = case_when(cabinet_party == 0 ~ 1,
+                               cabinet_party == 1 ~ 0),
+         econ_left = case_when(state_market>5 ~ 0,
+                               state_market<=5 ~ 1),
+         cult_progressive=case_when(liberty_authority>5 ~ 0,
+                               liberty_authority<=5 ~ 1)) %>% 
+  select(country, party_id, !!group_var, dep_vars) %>%
+  group_by(country, !!group_var, dep_vars) %>% 
+  mutate(by_var=n_distinct(party_id)) %>% 
+  select(-party_id) %>% 
+  unique(.) %>% 
+  group_by(country, !!group_var) %>% 
+  mutate(total=sum(by_var)) %>%
+  ungroup(.) %>% 
+  mutate(share=by_var/total) %>% 
+  select(country, share, dep_vars, !!group_var, total) %>% 
+  mutate(group_val=!!group_var) %>% 
+  mutate(group_var=as_label(group_var)) %>% 
+  unique(.) %>% 
+  arrange(country, dep_vars) %>% 
+  select(-!!group_var)
+
+return(dat_plot)
+
+}
+
+dat_plot <- groupped_share(dat_plot, mainstream_family) 
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, past_pm))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, opp_party))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, new_party))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, econ_left))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, cult_progressive))
+
+dat_plot <- dat_plot %>%
+  arrange(country, group_var, dep_vars) %>%
+  filter(!is.na(group_val)) %>%
+  filter(dep_vars==1) %>% 
+  select(-dep_vars)
+  
+
+full_list <- expand.grid(country=unique(dat_plot$country),
+                         group_var=unique(dat_plot$group_var),
+                         group_val=unique(dat_plot$group_val))
+
+dat_plot <- left_join(full_list, dat_plot) %>% 
+  mutate_at(vars(share, total), ~ifelse(is.na(.), 0, .)) %>% 
+  group_by(group_var, group_val) %>% 
+  mutate(share=mean(share)) %>% 
+  mutate(total=sum(total)) %>% 
+  select(-country) %>% 
+  distinct(.) %>% 
+  pivot_wider(id_cols = "group_var", names_from = "group_val", values_from = c("share", "total"))
+
+
+for (i in seq(1, nrow(dat_plot), 1)) {
+
+xsample <- sample(c(rep(1, round(dat_plot$total_0[i]*dat_plot$share_0[i], digits = 0)), 
+             rep(0, dat_plot$total_0[i]-round(dat_plot$total_0[i]*dat_plot$share_0[i], digits = 0))))
+
+ysample <- sample(c(rep(1, round(dat_plot$total_1[i]*dat_plot$share_1[i], digits = 0)), 
+             rep(0, dat_plot$total_1[i]-round(dat_plot$total_1[i]*dat_plot$share_1[i], digits = 0))))
+
+test <- t.test(xsample, ysample, alternative = "two.sided")
+
+dat_plot$p_value[i] <- test$p.value
+
+}
+
+dat_plot <- dat_plot %>% 
+  select(-contains("total")) %>% 
+  mutate(p_value = case_when(p_value<0.05 ~ 1, 
+                             TRUE ~ 0)) %>% 
+  mutate(diff=share_0-share_1) 
+
+ideological_party <- dat_plot  %>% 
+  pivot_longer(cols=c(share_1, share_0), names_to = "dummy", values_to = "share") %>% 
+  mutate(type = "Ideological party")
+
+```
+
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+
+dat <- dat %>% 
+  mutate(dep_vars=case_when(typology=="Nonideological nonparty" ~ 1,
+                            TRUE ~ 0))
+
+dat_plot <- groupped_share(dat_plot, mainstream_family) 
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, past_pm))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, opp_party))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, new_party))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, econ_left))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, cult_progressive))
+
+dat_plot <- dat_plot %>%
+  arrange(country, group_var, dep_vars) %>%
+  filter(!is.na(group_val)) %>%
+  filter(dep_vars==1) %>% 
+  select(-dep_vars)
+  
+
+full_list <- expand.grid(country=unique(dat_plot$country),
+                         group_var=unique(dat_plot$group_var),
+                         group_val=unique(dat_plot$group_val))
+
+dat_plot <- left_join(full_list, dat_plot) %>% 
+  mutate_at(vars(share, total), ~ifelse(is.na(.), 0, .)) %>% 
+  group_by(group_var, group_val) %>% 
+  mutate(share=mean(share)) %>% 
+  mutate(total=sum(total)) %>% 
+  select(-country) %>% 
+  distinct(.) %>% 
+  pivot_wider(id_cols = "group_var", names_from = "group_val", values_from = c("share", "total"))
+
+
+for (i in seq(1, nrow(dat_plot), 1)) {
+
+xsample <- sample(c(rep(1, round(dat_plot$total_0[i]*dat_plot$share_0[i], digits = 0)), 
+             rep(0, dat_plot$total_0[i]-round(dat_plot$total_0[i]*dat_plot$share_0[i], digits = 0))))
+
+ysample <- sample(c(rep(1, round(dat_plot$total_1[i]*dat_plot$share_1[i], digits = 0)), 
+             rep(0, dat_plot$total_1[i]-round(dat_plot$total_1[i]*dat_plot$share_1[i], digits = 0))))
+
+test <- t.test(xsample, ysample, alternative = "two.sided")
+
+dat_plot$p_value[i] <- test$p.value
+
+}
+
+dat_plot <- dat_plot %>% 
+  select(-contains("total")) %>% 
+  mutate(p_value = case_when(p_value<0.05 ~ 1, 
+                             TRUE ~ 0)) %>% 
+  mutate(diff=share_0-share_1) 
+
+nonideological_nonparty <- dat_plot %>% 
+  pivot_longer(cols=c(share_1, share_0), names_to = "dummy", values_to = "share") %>% 
+  mutate(type = "Nonideological nonparty")
+
+```
+
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+
+dat <- dat %>% 
+  mutate(dep_vars=case_when(typology=="Nonideological movement" ~ 1,
+                            TRUE ~ 0))
+
+dat_plot <- groupped_share(dat_plot, mainstream_family) 
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, past_pm))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, opp_party))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, new_party))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, econ_left))
+dat_plot <- bind_rows(dat_plot, groupped_share(dat_plot, cult_progressive))
+
+dat_plot <- dat_plot %>%
+  arrange(country, group_var, dep_vars) %>%
+  filter(!is.na(group_val)) %>%
+  filter(dep_vars==1) %>% 
+  select(-dep_vars)
+  
+
+full_list <- expand.grid(country=unique(dat_plot$country),
+                         group_var=unique(dat_plot$group_var),
+                         group_val=unique(dat_plot$group_val))
+
+dat_plot <- left_join(full_list, dat_plot) %>% 
+  mutate_at(vars(share, total), ~ifelse(is.na(.), 0, .)) %>% 
+  group_by(group_var, group_val) %>% 
+  mutate(share=mean(share)) %>% 
+  mutate(total=sum(total)) %>% 
+  select(-country) %>% 
+  distinct(.) %>% 
+  pivot_wider(id_cols = "group_var", names_from = "group_val", values_from = c("share", "total"))
+
+
+for (i in seq(1, nrow(dat_plot), 1)) {
+
+xsample <- sample(c(rep(1, round(dat_plot$total_0[i]*dat_plot$share_0[i], digits = 0)), 
+             rep(0, dat_plot$total_0[i]-round(dat_plot$total_0[i]*dat_plot$share_0[i], digits = 0))))
+
+ysample <- sample(c(rep(1, round(dat_plot$total_1[i]*dat_plot$share_1[i], digits = 0)), 
+             rep(0, dat_plot$total_1[i]-round(dat_plot$total_1[i]*dat_plot$share_1[i], digits = 0))))
+
+test <- t.test(xsample, ysample, alternative = "two.sided")
+
+dat_plot$p_value[i] <- test$p.value
+
+}
+
+dat_plot <- dat_plot %>% 
+  select(-contains("total")) %>% 
+  mutate(p_value = case_when(p_value<0.05 ~ 1, 
+                             TRUE ~ 0)) %>% 
+  mutate(diff=share_0-share_1) 
+
+nonideological_movement <- dat_plot %>% 
+  pivot_longer(cols=c(share_1, share_0), names_to = "dummy", values_to = "share") %>% 
+  mutate(type = "Nonideological movement")
+
+```
+
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+
+dat_plot <- bind_rows(ideological_party, nonideological_nonparty, nonideological_movement) %>% 
+  filter(!(group_var %in% c("cult_progressive", "econ_left", "opp_party"))) %>% 
+    mutate(group_var=case_when(group_var=="mainstream_family" & dummy=="share_1" ~ "Mainstream party family",
+                               group_var=="mainstream_family" & dummy=="share_0" ~ "Challenger party family",
+                        group_var=="past_pm" & dummy=="share_1" ~ "Previously PM party",
+                        group_var=="past_pm" & dummy=="share_0" ~ "Previously no PM party",
+                        group_var=="opp_party" & dummy=="share_1" ~ "Opposition party",
+                        group_var=="opp_party" & dummy=="share_0" ~ "Government party",
+                        group_var=="new_party" & dummy=="share_1" ~ "New party",
+                        group_var=="new_party" & dummy=="share_0" ~ "Existing party")) %>%
+  mutate(diff=ifelse(dummy=="share_0", NA, diff)) %>% 
+  select(-dummy) %>% 
+  pivot_wider(id_cols = c(group_var), values_from = c(p_value, share, diff), names_from = type) %>% 
+  mutate(group_var=factor(group_var, levels = c("Mainstream party family",
+                                                "Challenger party family",
+                                                "Previously PM party", 
+                                                "Previously no PM party",
+                                                "Opposition party",
+                                                "Government party",
+                                                "New party",
+                                                "Existing party"))) %>% 
+  arrange(group_var)
+
+
+ideological_party_pval <- dat_plot$`p_value_Ideological party`
+nonideological_nonparty_pval <- dat_plot$`p_value_Nonideological nonparty`
+nonideological_movement_pval <- dat_plot$`p_value_Nonideological movement`
+
+dat_plot <- dat_plot %>% 
+  select(!contains("p_value")) %>% 
+  select("group_var", "share_Ideological party", "diff_Ideological party", "share_Nonideological nonparty", "diff_Nonideological nonparty", "share_Nonideological movement", "diff_Nonideological movement") %>% 
+  mutate_at(vars(contains(c("share_", "diff_"))), ~round(.*100, digits = 1)) %>% 
+  mutate_at(vars(contains(c("diff_"))), ~0-.) 
+
+options(knitr.kable.NA = "")
+
+mod_res <- dat_plot %>%
+  kbl(caption = "Distribution of brands by party type \\label{tab:ttest_table}",
+      booktabs = T, format = "latex", col.names = NULL, linesep = "") %>% 
+  # kable_styling(latex_options = c("hold_position")) %>% 
+  kable_styling(latex_options = "HOLD_position") %>%   # Change will be here
+  column_spec(3, bold = ideological_party_pval) %>%
+  column_spec(5, bold = nonideological_nonparty_pval) %>%
+  column_spec(7, bold = nonideological_movement_pval) %>%
+  add_header_above(c(" " = 1, "Share" = 1, "Diff." = 1, "Share" = 1, "Diff." = 1, "Share" = 1, "Diff." = 1)) %>%
+  add_header_above(c(" " = 1, "Classical \n party \n name" = 2, 
+                        "Nonideological \n nonparty \n name" = 2, 
+                        "Nonideological \n movement \n name" = 2)) %>% 
+  footnote(general = "Note: The values are averaged across all countries.", general_title="")
+  
+writeLines(mod_res, "main_text/tables/Table2.tex")
+
+```
+
+
+# Appendix A
+
+## Figure 1: Programmatic references in the names of parties (1945-2023)
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+dat_plot <- dat %>% 
+  select(ideology, catch_all_ref) %>% 
+  group_by(ideology) %>% 
+  mutate(nr_parties=n()) %>% 
+  ungroup(.) %>% 
+  select(ideology, nr_parties, catch_all_ref) %>% 
+  mutate(catch_all_ref=ifelse(catch_all_ref==1, 
+                              "Nonideological name", "Ideological name")) %>% 
+  mutate(catch_all_ref=factor(catch_all_ref, levels=c("Nonideological name", "Ideological name"))) %>% 
+  mutate(ideology_bold = ifelse(catch_all_ref == "Nonideological name", 
+                                     paste0("<b><span style='color:red'>", ideology, "</span></b>"), 
+                                     ideology)) %>% 
+  distinct(.)
+
+ggplot(dat_plot, aes(y = reorder(ideology, -nr_parties), 
+                     x=nr_parties, fill=catch_all_ref)) +
+  geom_bar(aes(alpha=catch_all_ref), stat = "identity", color="black") + 
+  geom_text(aes(label=nr_parties, x=nr_parties+50), size=3) +
+  xlab("Number of party names") +
+  scale_alpha_manual(values = c("Nonideological name" = 0.4, 
+                                "Ideological name" = 1)) +  
+  scale_fill_manual(values=c("red", "gray40")) +
+  scale_y_discrete(labels = setNames(dat_plot$ideology_bold, dat_plot$ideology)) +  
+  theme_linedraw() +
+  theme(legend.title = element_blank(), 
+        legend.position = "bottom",
+        axis.title.y = element_blank(),
+        axis.text.y = element_markdown())  # Enables markdown formatting
+
+ggsave(plot=last_plot(),
+      filename = "appendix/figures/ideology_types.png",
+      scale = 2,
+      width = 11, height = 9, dpi=400, units="cm")
+
+```
+
+
+## Figure 2: Organizational references in the names of parties (1945-2023)
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+
+dat_plot <- dat %>% 
+  select(org_reference, action_based) %>% 
+  group_by(org_reference) %>% 
+  mutate(nr_parties=n()) %>% 
+  ungroup(.) %>% 
+  select(org_reference, nr_parties, action_based) %>% 
+  distinct(.) %>% 
+  group_by(org_reference) %>% 
+  mutate(ranking=sum(nr_parties, na.rm = TRUE)) %>% 
+  mutate(action_based=stringr::str_to_sentence(action_based)) %>% 
+  ungroup(.) %>% 
+  mutate(action_based=case_when(action_based=="Action based" ~ "Movement name",
+                                action_based=="Not action based" ~ "Nonparty name")) %>%
+  mutate(org_reference_bold = ifelse(action_based == "Movement name", 
+                                     paste0("<b><span style='color:red'>", org_reference, "</span></b>"), 
+                                     org_reference)) %>% 
+  filter(org_reference!="Party")
+
+
+ggplot(dat_plot, aes(y = reorder(org_reference, -ranking), 
+                     x = nr_parties, fill = action_based)) +
+  geom_bar(aes(alpha = action_based), stat = "identity", color = "black") + 
+  geom_text(aes(label = nr_parties, x = nr_parties + 50), size = 3) +
+  xlab("Number of party names") +
+  scale_fill_manual(values = c("Movement name" = "red", 
+                               "Nonparty name" = "gray40")) +  # Ensure correct color mapping
+  scale_alpha_manual(values = c("Movement name" = 0.4, 
+                                "Nonparty name" = 1)) +  # Ensure correct alpha mapping
+  scale_y_discrete(labels = setNames(dat_plot$org_reference_bold, dat_plot$org_reference)) +  
+  theme_linedraw() +
+  theme(legend.title = element_blank(), 
+        legend.position = "bottom",
+        axis.title.y = element_blank(),
+        axis.text.y = element_markdown())  # Enables markdown formatting
+
+ggsave(plot=last_plot(),
+      filename = "appendix/figures/org_types.png",
+      scale = 2,
+      width = 11, height = 9, dpi=400, units="cm")
+
+```
+
+## Figure 3: Distribution over time of party brands across 28 European countries (1945-2023)
+
+```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+
+dat_plot1 <- dat %>% 
+  mutate(region=case_when(country_name %in% c("Bulgaria", "Czech Republic", "Czechia", 
+                                              "Estonia", "Croatia", "Hungary", 
+                                              "Lithuania", "Latvia", "Poland", 
+                                              "Romania", "Slovakia", 
+                                              "Slovenia") ~ "Eastern EU",
+                          country_name %in% c("Austria", "Belgium", "Switzerland", 
+                                              "Germany", "Denmark", "Spain", 
+                                              "Finland", "France", "United Kingdom", 
+                                              "Greece", "Ireland", "Italy", 
+                                              "Luxembourg", "Netherlands", 
+                                              "Norway", "Portugal", 
+                                              "Sweden") ~ "Western EU",
+                          TRUE ~ as.character(NA))) %>% 
+  filter(region=="Western EU") %>% 
+  select(year, typology) %>% 
+  group_by(year) %>%
+  mutate(total_parties=n()) %>%
+  ungroup(.) %>% 
+  group_by(year, typology) %>% 
+  mutate(nr_parties=n()) %>%
+  ungroup(.) %>%
+  select(year, typology, total_parties, nr_parties) %>%
+  distinct(.) %>% 
+  mutate(broad_types=case_when(grepl("Ideological", typology) ~ "Ideological names",
+                               grepl("Nonideological", typology) ~ "Nonideological names")) %>% 
+  mutate(share_parties=nr_parties*100/total_parties) %>% 
+  select(-total_parties, -nr_parties)
+
+check_dups <- dat_plot1 %>% 
+  select(year, typology) %>% 
+  distinct()
+
+nrow(check_dups) == nrow(dat_plot1)
+
+full_grid <- expand.grid(year=unique(dat_plot1$year), 
+                         typology=unique(dat_plot1$typology))
+
+dat_plot1 <- left_join(full_grid, dat_plot1) %>% 
+  group_by(typology) %>% 
+  fill(broad_types, .direction = "downup") %>%
+  ungroup(.) %>%
+  mutate(share_parties=ifelse(is.na(share_parties), 0, share_parties)) %>% 
+  mutate(typology=case_when(typology=="Ideological party" ~ "Classical party\nname",
+                            typology=="Nonideological nonparty" ~ "Nonideological nonparty\nname",
+                            typology=="Nonideological movement" ~ "Nonideological movement\nname",
+                            typology=="Ideological nonparty" ~ "Ideological nonparty\nname",
+                            typology=="Ideological movement" ~ "Ideological movement\nname",
+                            typology=="Nonideological party" ~ "Nonideological party\nname")) %>% 
+  mutate(typology=factor(typology, levels=c("Classical party\nname", 
+                                            "Ideological nonparty\nname", 
+                                            "Ideological movement\nname", 
+                                            "Nonideological party\nname",
+                                            "Nonideological nonparty\nname", 
+                                            "Nonideological movement\nname")))
+
+timeline <- ggplot(dat_plot1, aes(x=year, y = share_parties, linetype=typology, color=typology)) + 
+  geom_line(size=0.75) +
+  ylab("Proportion from all party names") +
+  facet_grid(~broad_types) +
+  scale_x_discrete(limits=(seq(1945, 2023, 10))) +
+  scale_color_manual(values=c("#0072B2", "#D55E00", "#009E73", "#CCBB44", "#CC79A7",  "#56B4E9")) +
+  scale_linetype_manual(values=c("solid", "dotdash", "longdash", "solid", "twodash", "dashed")) +
+  guides(color = guide_legend(nrow =3),
+         linetype = guide_legend(nrow=3)) +
+  theme_bw() + 
+  expand_limits(y = 0) +
+  theme(
+    legend.title = element_blank(), 
+    legend.position = "bottom",
+    legend.margin = margin(),
+    axis.title.x = element_blank(),
+    legend.key.width = unit(2, "cm")
+  )
+
+timeline
+
+ggsave(plot=last_plot(),
+       filename = "appendix/figures/all_types.eps",
+       scale = 2,
+       width = 8, height = 7, dpi=400, units="cm")
+
+```
+
+
+## Figures for the Table 1 
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+
+dat_plot1 <- dat %>% 
+  mutate(indic=case_when(typology == "Ideological party" ~ 1,
+                         typology != "Ideological party" ~ 0)) %>% 
+  group_by(year, country) %>% 
+  mutate(indic=sum(indic, na.rm=TRUE)) %>% 
+  mutate(nr_parties=length(unique(party_id))) %>% 
+  select(year, country, nr_parties, indic) %>% 
+  ungroup(.) %>% 
+  unique(.) %>% 
+  mutate(share=indic*100/nr_parties) %>% 
+  group_by(country) %>% 
+  mutate(mean=mean(share)) %>% 
+  mutate(min_country=ifelse(year==min(year), share, as.numeric(NA))) %>% 
+  mutate(max_country=ifelse(year==max(year), share, as.numeric(NA))) %>% 
+  fill(min_country, .direction = "updown") %>% 
+  fill(max_country, .direction = "updown") %>% 
+  mutate(diff_max_min=max_country-min_country) %>% 
+  ungroup(.) %>% 
+  select(-nr_parties, -indic, -max_country, -min_country) %>% 
+  rename(no_party_share=share,
+         no_party_mean=mean,
+         no_party_diff=diff_max_min)
+
+
+dat_plot2 <- dat %>% 
+  mutate(indic=case_when(typology == "Nonideological nonparty" ~ 1,
+                         typology != "Nonideological nonparty" ~ 0)) %>% 
+  group_by(year, country) %>% 
+  mutate(indic=sum(indic, na.rm=TRUE)) %>% 
+  mutate(nr_parties=length(unique(party_id))) %>% 
+  select(year, country, nr_parties, indic) %>% 
+  ungroup(.) %>% 
+  unique(.) %>% 
+  mutate(share=indic*100/nr_parties) %>% 
+  group_by(country) %>% 
+  mutate(mean=mean(share)) %>% 
+  mutate(min_country=ifelse(year==min(year), share, as.numeric(NA))) %>% 
+  mutate(max_country=ifelse(year==max(year), share, as.numeric(NA))) %>% 
+  fill(min_country, .direction = "updown") %>% 
+  fill(max_country, .direction = "updown") %>% 
+  mutate(diff_max_min=max_country-min_country) %>% 
+  ungroup(.) %>% 
+  select(-nr_parties, -indic, -max_country, -min_country) %>% 
+  rename(nonideo_share=share,
+         nonideo_mean=mean,
+         nonideo_diff=diff_max_min)
+
+
+dat_plot3 <- dat %>% 
+  mutate(indic=case_when(typology == "Nonideological movement" ~ 1,
+                         typology != "Nonideological movement" ~ 0)) %>% 
+  group_by(year, country) %>% 
+  mutate(indic=sum(indic, na.rm=TRUE)) %>% 
+  mutate(nr_parties=length(unique(party_id))) %>% 
+  select(year, country, nr_parties, indic) %>% 
+  ungroup(.) %>% 
+  unique(.) %>% 
+  mutate(share=indic*100/nr_parties) %>% 
+  group_by(country) %>% 
+  mutate(mean=mean(share)) %>% 
+  mutate(min_country=ifelse(year==min(year), share, as.numeric(NA))) %>% 
+  mutate(max_country=ifelse(year==max(year), share, as.numeric(NA))) %>% 
+  fill(min_country, .direction = "updown") %>% 
+  fill(max_country, .direction = "updown") %>% 
+  mutate(diff_max_min=max_country-min_country) %>% 
+  ungroup(.) %>% 
+  select(-nr_parties, -indic, -max_country, -min_country) %>% 
+  rename(movement_share=share,
+         movement_mean=mean,
+         movement_diff=diff_max_min)
+
+dat_plot <- full_join(dat_plot1, dat_plot3)
+dat_plot <- full_join(dat_plot, dat_plot2) %>% 
+  arrange(country, year) %>% 
+  group_by(country) %>% 
+  mutate(min_country=min(year)) %>% 
+  ungroup(.) %>% 
+  mutate(country=paste0(country, " (", min_country, "-`21)")) %>% 
+  select(-min_country)
+
+```
+
+
+```{r, message = F, warning = F, results = 'asis'}
+
+script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
+target_dir <- file.path(script_dir, "appendix", "figures", "spec_plot")
+
+
+do.call(file.remove, list(list.files(target_dir, full.names = TRUE)))
+
+spec_plot2 <- function(...) {
+  kableExtra::spec_plot(dir = target_dir,
+                        file_type = "pdf", 
+                        same_lim = FALSE, ...)
+}
+
+no_party_list <- split(dat_plot$no_party_share, dat_plot$country)
+nonideo_list <- split(dat_plot$nonideo_share, dat_plot$country)
+movement_list <- split(dat_plot$movement_share, dat_plot$country)
+
+
+options(knitr.kable.NA = "")
+
+mod_res <- dat_plot %>%
+  mutate_at(vars(no_party_mean, no_party_diff, nonideo_mean, nonideo_diff,
+         movement_mean, movement_diff), ~round(., digits = 0)) %>% 
+  mutate(no_party_shape = "", nonideo_shape = "", movement_shape = "" ) %>% 
+  select(country, no_party_shape, no_party_diff, nonideo_shape, nonideo_diff, 
+         movement_shape, movement_diff) %>% 
+  unique(.) %>% 
+  kbl(caption = "Distribution of brands by country \\label{tab:country_table}",
+      col.names = c(" ", "Shape", "t(`23)-t(0)"
+                    , "Shape", "t(`23)-t(0)"
+                    , "Shape", "t(`23)-t(0)"),
+      booktabs = T, format = "latex", linesep = "") %>% 
+  kable_styling(latex_options = "HOLD_position") %>%   # Change will be here
+  column_spec(2, image = spec_plot2(no_party_list)) %>% 
+  column_spec(4, image = spec_plot2(nonideo_list)) %>% 
+  column_spec(6, image = spec_plot2(movement_list)) %>% 
+  # add_header_above(c(" " = 1, " " = 1, "Pp.(t0)" = 1, " " = 1,
+  #                    "Pp.(t0)"=1, " " = 1, "Pp.(t0)" = 1)) %>% 
+  # add_header_above(c(" " = 1, "Shape" = 1, "Pp.(2023)-" = 1, "Shape" = 1,
+  #                    "Pp.(2023)-"=1, "Shape" = 1, "Pp.(2023)-" = 1)) %>% 
+  add_header_above(c(" " = 1, "Share of \n classical \n party \n names" = 2, 
+                        "Share of \n nonideological \n nonparty \n names" = 2, 
+                        "Share of \n nonideological \n movement \n names" = 2)) %>% 
+  footnote(general = "Note: The values represent the share of parties from all parties in a country/year context.", general_title="")
+
+mod_res <- as.character(mod_res)
+
+mod_res <- gsub("(?<=\\{)file:/+[^}]*/appendix/", "./", mod_res, perl = TRUE)
+
+writeLines(mod_res, "appendix/desc_countries.tex")
+
+# Save LaTeX table
+# writeLines(as.character(mod_res_kbl), here("desc_countries.tex"))
+```
+
+
+## Figure 4: Over time distribution of party brands within countries (1945-2023)
+
+```{r, echo = F, message = F, warning =F, fig.height = 5, fig.width = 5, fig.align = "center"}
+
+dat_plot <- dat %>% 
+  mutate(dummy = case_when(typology == "Ideological party" ~ 1,
+                           typology != "Ideological party" ~ 0)) %>%
+  select(democratization, country_name, year, party_id, dummy) %>%
+  dplyr::mutate(count=1) %>% 
+  group_by(country_name, year) %>% 
+  dplyr::mutate(total_yearly=sum(count)) %>% 
+  group_by(country_name, year, dummy) %>% 
+  dplyr::mutate(total_prt=n_distinct(party_id, na.rm = TRUE)) %>% 
+  ungroup(.) %>% 
+  select(democratization, country_name, year, dummy, total_yearly, total_prt) %>% 
+  distinct(.) %>% 
+  mutate(share=total_prt*100/total_yearly) %>% 
+  select(-total_prt, -total_yearly) %>% 
+  filter(dummy==1) %>% 
+  mutate(dummy="Ideological party") 
+
+dat_plot1 <- dat %>% 
+  mutate(dummy = case_when(typology == "Nonideological nonparty" ~ 1,
+                           typology != "Nonideological nonparty" ~ 0)) %>%
+  select(democratization, country_name, year, party_id, dummy) %>%
+  dplyr::mutate(count=1) %>% 
+  group_by(country_name, year) %>% 
+  dplyr::mutate(total_yearly=sum(count)) %>% 
+  group_by(country_name, year, dummy) %>% 
+  dplyr::mutate(total_prt=n_distinct(party_id, na.rm = TRUE)) %>% 
+  ungroup(.) %>% 
+  select(democratization, country_name, year, dummy, total_yearly, total_prt) %>% 
+  distinct(.) %>% 
+  mutate(share=total_prt*100/total_yearly) %>% 
+  select(-total_prt, -total_yearly) %>% 
+  filter(dummy==1) %>% 
+  mutate(dummy="Nonideological nonparty")
+
+dat_plot2 <- dat %>% 
+  mutate(dummy = case_when(typology == "Nonideological movement" ~ 1,
+                          typology != "Nonideological movement" ~ 0)) %>%
+  select(democratization, country_name, year, party_id, dummy) %>%
+  dplyr::mutate(count=1) %>% 
+  group_by(country_name, year) %>% 
+  dplyr::mutate(total_yearly=sum(count)) %>% 
+  group_by(country_name, year, dummy) %>% 
+  dplyr::mutate(total_prt=n_distinct(party_id, na.rm = TRUE)) %>% 
+  ungroup(.) %>% 
+  select(democratization, country_name, year, dummy, total_yearly, total_prt) %>% 
+  distinct(.) %>% 
+  mutate(share=total_prt*100/total_yearly) %>% 
+  select(-total_prt, -total_yearly) %>% 
+  filter(dummy==1) %>% 
+  mutate(dummy="Nonideological movement") 
+
+dat_plot <- bind_rows(dat_plot, dat_plot1, dat_plot2)
+
+full_grid <- expand.grid(year=seq(1945, 2023, 1),
+                         country_name=unique(dat_plot$country_name),
+                         dummy=c("Ideological party", 
+                                "Nonideological nonparty",
+                                "Nonideological movement"))
+
+dat_plot <- left_join(full_grid, dat_plot) %>% 
+   filter(year<=2023) %>%
+   mutate(dummy=case_when(dummy=="Ideological party" ~ "Classical party\nname",
+                          dummy=="Nonideological nonparty" ~ "Nonideological nonparty\nname",
+                          dummy=="Nonideological movement" ~ "Nonideological movement\nname")) %>%
+   mutate(dummy=factor(dummy, levels = c("Classical party\nname",
+                                        "Nonideological nonparty\nname",
+                                        "Nonideological movement\nname"))) %>%
+   group_by(country_name) %>% 
+   fill(democratization, .direction="updown") %>% 
+   mutate(share=case_when(is.na(share) & democratization=="Ist or IInd wave" ~ 0, 
+                          is.na(share) & democratization=="IIIrd wave in EE" & year>=1991 ~ 0, 
+                          is.na(share) & country_name=="Spain" & year>=1976 ~ 0, 
+                          is.na(share) & country_name=="Portugal" & year>=1974 ~ 0, 
+                          is.na(share) & country_name=="Greece" & year>=1974 ~ 0, 
+                          TRUE ~ share))
+
+timeline1 <- ggplot(dat_plot, aes(x=year, y = share, linetype=dummy, color=dummy)) + 
+  geom_line() +
+  ylab("Proportion from all party names") +
+  facet_wrap(~country_name) +
+  scale_x_discrete(limits=(seq(1945, 2023, 30))) +
+  scale_color_manual(values = c("#E69F00", "#000000", "#56B4E9")) +
+  scale_linetype_manual(values=c("solid", "dotdash", "longdash")) + 
+  guides(color = guide_legend(nrow =1),
+         linetype = guide_legend(nrow=1)) +
+  theme_bw() + 
+  expand_limits(y = 0) +
+  theme(legend.title=element_blank(), 
+        legend.position="bottom",
+        legend.margin=margin(),
+        axis.title.x=element_blank(),
+        legend.key.width = unit(1.5, "cm")) 
+
+timeline1
+
+ggsave(plot=last_plot(),
+      filename = "appendix/figures/country_timeline.eps",
+      scale = 2.5,
+      width = 7, height = 7, dpi=400, units="cm")
+
+```
+
+
+## Corelation plots
+
+```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+
+party_lev_dummy <- c("past_pm_lag1", "opp_party_lag1", "coalition")
+party_lev_cont <- c("vote_share_lag1", "party_age") 
+context_lev <- c("cmp_econ_polar_lag1",
+                 "cmp_cult_polar_lag1", "tv_it_lag1", "Voter_Turnout_lag1",
+                 "v2x_polyarchy_lag1")
+context_lev_dummy <- "gtm_parl_lag1"
+dep_vars <- c("dep_var1", "dep_var2", "dep_var3")
+id_vars <- c("party_id", "year", "country_year", "country")
+
+# party and party year variables
+
+reg_dat <- d_lng %>% 
+  mutate(dep_var1 = case_when(typology == "Ideological party" ~ 1,
+                              typology != "Ideological party" ~ 0),
+         dep_var2 = case_when(typology == "Nonideological nonparty" ~ 1,
+                                  typology != "Nonideological nonparty" ~ 0),
+         dep_var3 = case_when(typology == "Nonideological movement" ~ 1,
+                                  typology != "Nonideological movement" ~ 0),
+         party_fam = case_when(family_name %in% c("to be coded", 
+                                                  "Special issue", 
+                                                  "no family") ~ "Other",
+                               TRUE ~ family_name),
+         opp_party_lag1 = case_when(cabinet_party_lag1 == 0 ~ 1,
+                                    cabinet_party_lag1 == 1 ~ 0),
+         party_age = log(party_age), 
+         gtm_parl_lag1 = factor(gtm_parl_lag1, levels=c(0, 1)),
+         country_year=paste(country, year, sep="_")) %>% 
+  mutate(decades=case_when(year<1970 ~ "1945-1969",
+                           year>=1970 & year<1990 ~ "1970-1989",
+                           year>=1990 & year<2009 ~ "1990-2008",
+                           year>=2009 & year<=2023 ~ "2009-2023")) %>% 
+  mutate(decades=factor(decades, levels = c("1945-1969", "1970-1989",
+                                            "1990-2008", "2009-2023"))) %>% 
+  mutate(party_fam=factor(party_fam, levels=c("Christian democracy",  
+                                              "Liberal", 
+                                              "Social democracy",
+                                              "Communist/Socialist", 
+                                              "Green/Ecologist", 
+                                              "Conservative", 
+                                              "Right-wing",
+                                              "Agrarian",
+                                              "Other"))) %>% 
+  mutate(country_decades=paste0(country, "_", as.character(decades))) %>% 
+  mutate_at(vars(coalition, opp_party_lag1), ~ factor(., levels = c("0", "1"))) %>% 
+  mutate_at(vars(all_of(c(party_lev_cont))), ~ range01(as.numeric(.)))
+
+# country, country year and year level variables
+
+reg_dat <- reg_dat %>%
+  mutate_at(vars(all_of(context_lev), year), ~range01(as.numeric(.))) 
+
+# centering, and selecting what is included
+reg_dat <- reg_dat %>%  
+  select(all_of(party_lev_dummy), all_of(party_lev_cont), 
+         all_of(context_lev), all_of(dep_vars), all_of(id_vars), 
+         decades, year, party_fam, coalition, country_decades,
+         all_of(context_lev_dummy)) %>% 
+  group_by(country_year) %>%
+  mutate_at(vars(all_of(c(party_lev_cont))), ~.-mean(., na.rm=TRUE)) %>%
+  ungroup(.) %>%
+  group_by(country) %>% 
+  mutate_at(vars(all_of(c(context_lev))), ~.-mean(unique(., na.rm=TRUE), na.rm=TRUE)) %>% 
+  ungroup(.) %>% 
+  drop_na(all_of(party_lev_dummy), all_of(party_lev_cont), all_of(context_lev),
+          all_of(context_lev_dummy), all_of(dep_vars), all_of(id_vars))
+
+```
+
+### Figure 6: Correlation between context level predictors
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+cor_dat <- reg_dat %>% 
+  select(-party_lev_cont, -party_lev_dummy, -party_id, -year, -country, -country_decades, -coalition, -party_fam) %>%
+  group_by(country_year) %>% 
+  mutate_at(vars(all_of(dep_vars)), ~ mean(., na.rm=TRUE)) %>% 
+  ungroup(.) %>% 
+  select("Voter_Turnout_lag1", "cmp_econ_polar_lag1", "cmp_cult_polar_lag1", "tv_it_lag1", "v2x_polyarchy_lag1",
+         "gtm_parl_lag1", "decades", "dep_var1", "dep_var2", "dep_var3", "country_year") %>% 
+  unique(.) %>% 
+  select(-country_year) %>% 
+  mutate_at(vars(everything()), ~ as.numeric(.))
+
+M<-cor(cor_dat, use="pairwise.complete.obs")
+head(round(M,2))
+
+rownames(M) <- c("Turnout", "Econ. polariz.", "Cult. polar.", "Electoral volatil.", "Electoral dem.",
+                 "Presidentialism", "Decades", "Ideological party", "Nonideological nonparty", "Nonideological movement")
+ 
+colnames(M) <- c("Turnout",  "Econ. polariz.", "Cult. polar.", "Electoral volatil.", "Electoral dem.",
+                 "Presidentialism", "Decades", "Ideological party", "Nonideological nonparty", "Nonideological movement")
+
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+
+png(filename = "appendix/figures/corplot_context.png", width = 7, height = 7, res=500, units="cm", pointsize=3.6)
+corrplot(M, method="color", col=col(200),  
+         type="upper",
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt=45, #Text label color and rotation
+         diag=FALSE,
+         mar = c(rep(0, 4)))
+dev.off()
+```
+
+### Figure 5: Correlation between party level predictors
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+cor_dat <- reg_dat %>% 
+  select(-context_lev, -id_vars) %>% 
+  select("party_fam", "past_pm_lag1", "opp_party_lag1", "party_age", "vote_share_lag1", "coalition", "dep_var1", "dep_var2", "dep_var3") %>% 
+  mutate_at(vars(everything()), ~ as.numeric(.))
+
+
+M<-cor(cor_dat, use="pairwise.complete.obs")
+head(round(M,2))
+
+rownames(M) <- c("Party family", "Past PM party", "Opp. party", "Party age", "Vote share", "Electoral coalition", "Ideological party", "Nonideological nonparty", "Nonideological movement")
+ 
+colnames(M) <- c("Party family", "Past PM party", "Opp. party", "Party age", "Vote share", "Electoral coalition", "Ideological party", "Nonideological nonparty", "Nonideological movement")
+
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+
+png(filename = "appendix/figures/corplot_party.png", width = 7, height = 7, res=500, units="cm", pointsize=3.6)
+corrplot(M, method="color", col=col(200),  
+         type="upper", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt=45, #Text label color and rotation
+         diag=FALSE,
+         mar = c(0, 0, 0, 0) 
+         )
+dev.off()
+
+
+```
+
+
+# Appendix B
+
+## Figure 1: Number of parties re-branding between 1945-2023
+
+```{r, echo = F, message = F, warning = F, fig.height = 3.45, fig.width = 5.5, fig.align = "center"}
+
+dat_plot1 <- dat %>% 
+  mutate(ideol_brand = case_when(grepl("Nonideolog", typology) ~ 1,
+                                 TRUE ~ 0)) %>% 
+  group_by(country, party_id) %>% 
+  mutate(n_indic = n_distinct(ideol_brand, na.rm = TRUE),
+    type = if_else(n_indic == 1, paste("Consistently", first(ideol_brand)), "changed")) %>% 
+  ungroup(.) %>% 
+  select(-n_indic) %>% 
+  select(party_id, type) %>%
+  unique() %>% 
+  dplyr::mutate(total=n()) %>% 
+  group_by(type) %>% 
+  dplyr::mutate(by_indic=n()) %>% 
+  ungroup(.) %>% 
+  select(-party_id) %>% 
+  unique(.) %>% 
+  mutate(share=by_indic*100/total) %>% 
+  filter(type=="changed") %>% 
+  select(-type) %>% 
+  mutate(DV="Ideological dimension")
+
+dat_plot2 <- dat %>% 
+  mutate(org_brand = case_when(grepl(" party", typology) ~ "party",
+                               grepl("movement", typology) ~ "movement",
+                               grepl("nonparty", typology) ~ "nonparty")) %>% 
+  group_by(country, party_id) %>% 
+  mutate(n_indic = n_distinct(org_brand, na.rm = TRUE),
+    type = if_else(n_indic == 1, paste("Consistently", first(org_brand)), "changed")) %>% 
+  ungroup(.) %>% 
+  select(-n_indic) %>% 
+  select(party_id, type) %>%
+  unique() %>% 
+  dplyr::mutate(total=n()) %>% 
+  group_by(type) %>% 
+  dplyr::mutate(by_indic=n()) %>% 
+  ungroup(.) %>% 
+  select(-party_id) %>% 
+  unique(.) %>% 
+  mutate(share=by_indic*100/total) %>% 
+  filter(type=="changed") %>% 
+  select(-type) %>% 
+  mutate(DV="Organizational dimension")
+
+dat_plot3 <- dat %>% 
+  group_by(country, party_id) %>% 
+  mutate(n_indic = n_distinct(typology, na.rm = TRUE),
+    type = if_else(n_indic == 1, paste("Consistently", first(typology)), "changed")) %>% 
+  ungroup(.) %>% 
+  select(-n_indic) %>% 
+  select(party_id, type) %>%
+  unique() %>% 
+  dplyr::mutate(total=n()) %>% 
+  group_by(type) %>% 
+  dplyr::mutate(by_indic=n()) %>% 
+  ungroup(.) %>% 
+  mutate(share=by_indic*100/total) %>% 
+  select(type, by_indic, share, total) %>%
+  unique(.) %>% 
+  filter(type=="changed") %>% 
+  select(-type) %>% 
+  mutate(DV="Typology")
+
+dat_plot <- bind_rows(dat_plot1, dat_plot2, dat_plot3) 
+
+dat_plot1 <- dat %>% 
+  mutate(indic = case_when(typology == "Ideological party" ~ 1,
+                           typology != "Ideological party" ~ 0)) %>% 
+  group_by(country, party_id) %>% 
+  mutate(n_indic = n_distinct(indic, na.rm = TRUE),
+    type = if_else(n_indic == 1, paste("Consistently", first(indic)), "changed")) %>% 
+  ungroup(.) %>% 
+  select(-n_indic) %>% 
+  select(party_id, type) %>%
+  unique() %>% 
+  dplyr::mutate(total=n()) %>% 
+  group_by(type) %>% 
+  dplyr::mutate(by_indic=n()) %>% 
+  ungroup(.) %>% 
+  select(-party_id) %>% 
+  unique(.) %>% 
+  mutate(share=by_indic*100/total) %>% 
+  filter(type=="changed") %>% 
+  select(-type) %>% 
+  mutate(DV="Ideological party")
+
+dat_plot2 <- dat %>% 
+  mutate(indic = case_when(typology == "Nonideological nonparty" ~ 1,
+                           typology != "Nonideological nonparty" ~ 0)) %>% 
+  group_by(country, party_id) %>% 
+  mutate(n_indic = n_distinct(indic, na.rm = TRUE),
+    type = if_else(n_indic == 1, paste("Consistently", first(indic)), "changed")) %>% 
+  ungroup(.) %>% 
+  select(-n_indic) %>% 
+  select(party_id, type) %>%
+  unique() %>% 
+  dplyr::mutate(total=n()) %>% 
+  group_by(type) %>% 
+  dplyr::mutate(by_indic=n()) %>% 
+  ungroup(.) %>% 
+  select(-party_id) %>% 
+  unique(.) %>% 
+  mutate(share=by_indic*100/total) %>% 
+  filter(type=="changed") %>% 
+  select(-type) %>% 
+  mutate(DV="Nonideological nonparty")
+
+dat_plot3 <- dat %>% 
+  mutate(indic = case_when(typology == "Nonideological movement" ~ 1,
+                                  typology != "Nonideological movement" ~ 0)) %>% 
+  group_by(country, party_id) %>% 
+  mutate(n_indic = n_distinct(indic, na.rm = TRUE),
+    type = if_else(n_indic == 1, paste("Consistently", first(indic)), "changed")) %>% 
+  ungroup(.) %>% 
+  select(-n_indic) %>% 
+  select(party_id, type) %>%
+  unique() %>% 
+  dplyr::mutate(total=n()) %>% 
+  group_by(type) %>% 
+  dplyr::mutate(by_indic=n()) %>% 
+  ungroup(.) %>% 
+  select(-party_id) %>% 
+  unique(.) %>% 
+  mutate(share=by_indic*100/total) %>% 
+  filter(type=="changed") %>% 
+  select(-type) %>% 
+  mutate(DV="Nonideological movement")
+
+
+dat_plot <- bind_rows(dat_plot, dat_plot1, dat_plot2, dat_plot3) %>% 
+  mutate(facet=ifelse(DV %in% c("Ideological dimension", "Organizational dimension", "Typology"), 
+                      "Overall change, in terms of:", "Changes into specific types:")) %>% 
+  mutate(facet=factor(facet, levels=c("Overall change, in terms of:", "Changes into specific types:"))) %>% 
+  mutate(DV=case_when(DV=="Ideological dimension" ~ "Ideological\n dimension",
+                      DV=="Organizational dimension" ~ "Organizational\n dimension",
+                      DV=="Typology" ~ "Typology",
+                      DV=="Ideological party" ~ "Classical\n party name",
+                      DV=="Nonideological nonparty" ~ "Nonideological\nnonparty name",
+                      DV=="Nonideological movement" ~ "Nonideological\nmovement name")) 
+
+ggplot(dat_plot, aes(y = reorder(DV, share), x=share)) +
+  geom_bar(stat = "identity", alpha=0.4, color="black") + 
+  geom_text(aes(x=share-1.7, label=paste0(by_indic, "\nparties")), color="black") +
+  facet_wrap(~facet, ncol=1, scales="free_y") +
+  xlab("Proportion of re-branding parties") +
+  theme_linedraw() +
+  theme(legend.title=element_blank(), 
+        legend.position="bottom",
+        axis.title.y=element_blank())
+
+ggsave(plot=last_plot(),
+      filename = "appendix/figures/rebranded_parties.png",
+      scale = 2,
+      width = 6, height = 5, dpi=400, units="cm")
+
+```
+
+# Appendix D
+
+## Figure 1: Crisis of representation in Europe
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+
+dat_plot <- dat %>% 
+  select(country, cmp_rile_polar, cmp_econ_polar, cmp_cult_polar, 
+         Voter_Turnout, tv_it, year, democratization) %>% 
+  distinct() %>% 
+  mutate(democratization=as.character(democratization)) %>%
+  mutate(democratization=ifelse(country=="ITA", "IIIrd wave in SE", democratization)) %>% 
+  mutate(democratization=factor(democratization, levels=c("Ist or IInd wave", "IIIrd wave in SE", 
+                                                          "IIIrd wave in EE"))) %>%
+  filter(year>=1990) %>% 
+  filter(year<=2020) %>% 
+  group_by(country) %>% 
+  mutate_at(vars(cmp_rile_polar, cmp_econ_polar, cmp_cult_polar, 
+                 Voter_Turnout, tv_it), ~mean(., na.rm=TRUE)) %>%
+  ungroup(.) %>%
+  select(-year) %>%
+  distinct() %>% 
+  arrange(country) %>% 
+  mutate(color_indic=ifelse(country %in% c("HUN", "AUT", "ITA", "DEU"), 1, 0)) %>% 
+  mutate(color_indic=as.factor(color_indic))
+
+summary(lm(tv_it ~ cmp_rile_polar, data=dat_plot))$r.squared
+
+ggplot(dat_plot, aes(x = cmp_rile_polar, y = tv_it, 
+                     label = country)) +
+  # geom_smooth(method = "lm", se = FALSE, color="gray60", linetype="dashed") +
+  geom_vline(xintercept = mean(dat_plot$cmp_rile_polar, na.rm=TRUE), linetype="dashed", color="gray60") +
+  geom_hline(yintercept = mean(dat_plot$tv_it, na.rm=TRUE), linetype="dashed",  color="gray60") +
+  geom_point(aes(color = color_indic, size=Voter_Turnout), shape=1) + 
+  geom_text_repel(aes(color = color_indic, shape=color_indic)) + 
+  geom_richtext(x=3.3, y=37, size=4, label="I.") +
+  geom_richtext(x=3.3, y=17.5, size=4, label="II.") +
+  geom_richtext(x=0.95, y=37, size=4, label="IV.") +
+  geom_richtext(x=0.95, y=17.5, size=4, label="III.") +
+  scale_color_manual(values = c("black", "red")) +  
+  theme_linedraw() +  
+  labs(x = "Polarization (RILE scale, mean value 1990-2020)", 
+       y = "Electoral Volatility (mean value 1990-2020)",
+       size = "Voter turnout (mean value 1990-2020):") +
+  guides(color = FALSE, shape=FALSE) +
+  theme(legend.position = "bottom", legend.direction = "horizontal") +
+  expand_limits(y=c(8, 37))
+
+ggsave(plot=last_plot(),
+      filename = "appendix/figures/country_scatter.png",
+      scale = 2.5,
+      width = 7, height = 7, dpi=400, units="cm")
+
+```
+
+```{r, echo = F, message = F, warning = F, fig.height = 5, fig.width = 10, fig.align = "center"}
+
+```

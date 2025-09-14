@@ -1,0 +1,689 @@
+---
+title: "Step1: data cleaning and management"
+author: "Endre Borbáth and Swen Hutter"
+output: html_document
+---
+
+```{r, message = F, include = F}
+
+
+rm(list = ls())
+
+library(readxl)
+library(openxlsx)
+library(tidyr)
+# library(plyr)
+library(dplyr)
+library(lubridate)
+library(readstata13)
+library(haven)
+library(stringi)
+library(stringr)
+library(forcats)
+library(tidyverse)
+library(vdemdata)
+library(foreign)
+library(here)
+
+dat <- read_csv("primary_data/hand_coded_party_name.csv")
+
+```
+
+## fill in the panel
+
+```{r, message = F, include = F}
+# I add the first election for each party and other party specific time constant factors from parlgov
+
+# In this chunk, the data set is filled up so that each year from the founding to the disappearance of the organization is present in the data.
+
+# To fill it up
+
+dat <- dat %>%
+  mutate(orig_obs=1) %>% 
+  group_by(party_id) %>%
+  complete(year = seq(1945, 2023, 1))
+
+
+dat <- dat %>% 
+  arrange(party_id, year) %>% 
+  group_by(party_id) %>% 
+  fill(id, .direction = "down") %>% 
+  fill(year, .direction = "down") 
+  # filter(!is.na(id)) # these are the combinations that happen before the first obs.
+  
+# Fill up and down all variables
+dat <- dat %>%
+  rename(eng_name=`English name`) %>% 
+  arrange(party_id, year) %>% 
+  group_by(party_id) %>%
+  fill(country, .direction = "updown") %>%
+  fill(party_name_short, .direction = "updown") %>%
+  fill(party_name, .direction = "updown") %>%
+  fill(family_name, .direction = "updown") %>%
+  fill(family_name_short, .direction = "updown") %>%
+  fill(left_right, .direction = "updown") %>%
+  fill(state_market, .direction = "updown") %>%
+  fill(liberty_authority, .direction = "updown") %>% 
+  fill(foundation_year, .direction = "updown") %>% 
+  group_by(party_id, id) %>%
+  fill(rename, .direction = "updown") %>%
+  fill(reason, .direction = "updown") %>%
+  fill(eng_name, .direction = "updown") %>%
+  fill(party_in_title, .direction = "updown") %>%
+  fill(coalition, .direction = "updown") %>%
+  fill(movement, .direction = "updown") %>%
+  fill(ideology, .direction = "updown") %>%
+  fill(alliance, .direction = "updown") %>%
+  fill(exclude, .direction = "updown") %>%
+  fill(democratization, .direction = "updown") %>% 
+  fill(leader_name, .direction = "updown") %>% 
+  ungroup(.)
+
+dat <- dat %>% 
+  mutate(year_change=ifelse(orig_obs==1, year, NA)) %>% 
+  group_by(party_id) %>% 
+  arrange(party_id, year) %>% 
+  fill(year_change, .direction = "down") %>% 
+  ungroup(.)
+
+```
+
+## Merging with parlgov to get all parties,  make some corrections and fill the missing values in families, fill the missings in the vote share and seat share
+
+```{r, message = F, include = F}
+
+parlgov_party <- read_xlsx("context_data/parlgov-stable.xlsx", sheet = "party") %>% #2022 stable version, https://doi.org/10.7910/DVN/UKILBE 
+select(party_id, family_name, family_name_short) %>% 
+  unique() %>% 
+  rename(new_family_name=family_name,
+         new_family_name_short=family_name_short) 
+
+dat <- left_join(dat, parlgov_party) %>% 
+  mutate(new_family_name=ifelse(is.na(new_family_name), family_name, new_family_name),
+         new_family_name_short=ifelse(is.na(new_family_name_short), family_name_short, new_family_name_short)) %>% 
+  select(-family_name, -family_name_short) %>% 
+  rename(family_name=new_family_name,
+         family_name_short=new_family_name_short) %>% 
+  mutate(family_name=case_when(party_id %in% c(200, 750) ~ "Right-wing",
+                               party_id==2020 ~ "Communist/Socialist", # Czech pirates are the only pirate party
+                               TRUE ~ family_name)) %>% # True Finns and SVP
+  
+  mutate(family_name_short=case_when(party_id %in% c(200, 750) ~ "right",
+                                     party_id== 2020 ~ "com" , # Czech pirates are the only pirate party
+                               TRUE ~ family_name_short)) %>% # True Finns and SVP 
+  mutate(family_name=case_when(party_id %in% c(2855) ~ "Liberal", # Megoldas mozgalom
+                               TRUE ~ family_name)) %>% # True Finns and SVP
+  
+  mutate(family_name_short=case_when(party_id %in% c(2855) ~ "lib", # Megoldas mozgalom
+                               TRUE ~ family_name_short))
+
+```
+
+
+```{r, message = F, include = F}
+
+# Elections from ParlGov
+# keeping the ones that were later in the year when there were multiple elections per year
+
+parlgov_elections <- read_xlsx("context_data/parlgov-stable.xlsx", sheet = "election") 
+
+parlgov_elections <- parlgov_elections %>%
+  filter(election_type == "parliament") %>%
+  mutate(election_date = ymd(election_date)) %>% 
+  arrange(country_name_short, party_id, election_date) %>% 
+  mutate(year=year(election_date)) %>% 
+  mutate(year_jan1 = ymd(paste(year, "01", "01", sep = "-"))) %>% 
+  mutate(duration = election_date-year_jan1) %>%
+  
+  mutate(id=paste(party_id, year, sep="-")) %>% 
+  mutate(year.dup =ifelse(duplicated(id), 1,0)) %>% 
+  ungroup(.)
+
+parlgov_elections <- plyr::ddply(parlgov_elections, plyr::.(election_date, country_name_short), mutate,  temp_mean=mean(year.dup))
+
+parlgov_elections <- parlgov_elections %>% 
+  mutate(year.dup=case_when(temp_mean>0 ~ 1,
+                                 TRUE ~ year.dup))
+
+parlgov_elections <- plyr::ddply(parlgov_elections, plyr::.(country_name_short, year), mutate,  max_duration=max(duration))
+
+parlgov_elections <- parlgov_elections %>% 
+  filter(duration==max_duration) %>% 
+  select(-year.dup, -year_jan1, -duration, 
+         -temp_mean, -max_duration, -id) %>% 
+  mutate(seat_share=seats*100/seats_total)
+
+parlgov_elections1 <- parlgov_elections %>% 
+  select(party_id, election_date, seat_share, vote_share)
+
+parlgov_elections1 <- plyr::ddply(parlgov_elections1, plyr::.(party_id), mutate,  
+                            first_election=min(election_date, na.rm = TRUE))
+parlgov_elections1 <- plyr::ddply(parlgov_elections1, plyr::.(party_id), mutate,  
+                            last_election=max(election_date, na.rm = TRUE)) 
+
+parlgov_elections1 <- parlgov_elections1 %>% 
+  group_by(party_id) %>% 
+  arrange(party_id, election_date) %>% 
+  mutate(rel_vote_change=vote_share/dplyr::lag(vote_share)) %>% 
+  mutate(
+    across(.cols = c(seat_share, vote_share, rel_vote_change),
+           .fns = ~ dplyr::lag(.x, n=1),
+           .names = "{.col}_lag1")
+  ) %>% 
+  ungroup(.)
+
+
+
+cntry_lev_elections <- parlgov_elections %>% 
+  select(country_name_short, election_date, year) %>% 
+  unique(.) %>% 
+  arrange(country_name_short, election_date, year) %>% 
+  dplyr::rename(country=country_name_short) 
+
+cntry_lev_elections <- cntry_lev_elections %>% 
+  group_by(country) %>%
+  complete(year = seq(1900, 2023, 1)) %>% 
+  fill(election_date, .direction="down") %>% 
+  filter(!is.na(election_date))
+
+dat <- left_join(dat, cntry_lev_elections, by=c("country", "year"))
+
+dat <- merge(dat, parlgov_elections1, by=c("party_id", "election_date"), all.x = TRUE)
+
+dat <- dat %>% 
+  arrange(country, party_id, year) %>%
+  filter(!is.na(year_change)) %>%
+  mutate_at(vars(vote_share, seat_share), ~ 
+              case_when(is.na(.) & !is.na(election_date) ~ 0,
+                        !is.na(.) ~ .)) %>% 
+  mutate(rel_vote_change=case_when(is.na(rel_vote_change) & !is.na(vote_share) ~ 0,
+                                   TRUE ~ rel_vote_change)) %>% 
+  group_by(country, party_id) %>% 
+  fill(first_election, .direction = "updown") %>% 
+  fill(last_election, .direction = "updown") %>%
+  ungroup(.)
+
+```
+
+```{r, message = F, include = F}
+
+# Cabinets from ParlGov
+# keeping the ones who were later in the year when there were multiple elections per year
+
+parlgov_cabinets <- read_xlsx("context_data/parlgov-stable.xlsx", sheet = "cabinet")
+
+parlgov_cabinets <- parlgov_cabinets %>%
+  mutate(start_date = ymd(start_date)) %>% 
+  arrange(party_id, start_date) %>% 
+  mutate(start_year=year(start_date)) %>% 
+  mutate(year_jan1 = ymd(paste(start_year, "01", "01", sep = "-"))) %>% 
+  mutate(duration = start_date-year_jan1) %>% 
+  mutate(id=paste(party_id, start_year, sep="-")) %>% 
+  mutate(start_date.dup =ifelse(duplicated(id), 1,0)) %>% 
+  ungroup(.)
+
+parlgov_cabinets <- plyr::ddply(parlgov_cabinets, plyr::.(start_year, country_name_short), mutate,  temp_mean=mean(start_date.dup))
+
+parlgov_cabinets <- parlgov_cabinets %>% 
+  mutate(start_date.dup=case_when(temp_mean>0 ~ 1,
+                                 TRUE ~ start_date.dup))
+
+parlgov_cabinets <- plyr::ddply(parlgov_cabinets, plyr::.(country_name_short, start_year), mutate,  max_duration=max(duration))
+
+parlgov_cabinets <- parlgov_cabinets %>% 
+  filter(duration==max_duration) %>% 
+  group_by(country_name_short, start_date, party_id) %>% # I need to do this because for 
+  mutate(seats=sum(seats)) %>%  #three gov. in the '50s party_id 947 
+  ungroup(.) %>% # (no party affiliation) is listed twice
+  select(-start_date.dup, -year_jan1, -duration, 
+         -temp_mean, -max_duration, -id) %>% 
+  distinct(.)
+
+cntry_cab_list <- parlgov_cabinets %>% 
+  select(country_name_short, start_date, start_year) %>% 
+  unique(.) %>% 
+  dplyr::rename(country=country_name_short,
+         year=start_year)
+
+cntry_cab_list <- cntry_cab_list %>% 
+  group_by(country) %>%
+  complete(year = seq(1900, 2023, 1)) %>% 
+  fill(start_date, .direction="down") %>% 
+  filter(!is.na(start_date))
+
+
+dat <- left_join(dat, cntry_cab_list, by=c("country", "year"))
+
+parlgov_cabinets1 <- parlgov_cabinets %>% 
+  select(party_id, start_date, cabinet_party, prime_minister) %>% 
+  group_by(party_id) %>% 
+  arrange(party_id, start_date) %>% 
+  mutate(
+    across(.cols = c(cabinet_party, prime_minister),
+           .fns = ~ dplyr::lag(.x, n=1),
+           .names = "{.col}_lag1")
+  ) %>% 
+  ungroup(.)
+
+dat <- left_join(dat, parlgov_cabinets1, by=c("party_id", "start_date"))
+
+dat <- dat %>% 
+  mutate_at(vars(cabinet_party, prime_minister), ~ case_when(is.na(.) ~ 0,
+                                                      TRUE ~ .)) %>% 
+  dplyr::rename(cabinet_start_date=start_date) %>% 
+  arrange(country, party_id, year)
+
+```
+
+# mainstream (in gov. before) and challengers (not in gov. before)
+
+```{r, message = F, include = F}
+
+dat <- dat %>% 
+  filter((democratization=="Ist or IInd wave" & year>=1945 & year<=2023) |
+         (democratization=="IIIrd wave in EE" & year>=1989 & year<=2023) |
+         (country=="ESP" & year>=1976 & year<=2023) |
+         (country=="PRT" & year>=1974 & year<=2023) |
+         (country=="GRC" & year>=1974 & year<=2023)) %>% 
+  arrange(country, party_id, year) %>% 
+  group_by(country, party_id) %>% 
+  dplyr::mutate(mainstream=cumsum(cabinet_party)) %>% 
+  dplyr::mutate(mainstream = case_when(mainstream >= 1 ~ "mainstream party",
+                                       mainstream == 0 ~ "challenger party",
+                                       TRUE ~ "")) %>% 
+  dplyr::mutate(mainstream=factor(mainstream, levels = c("mainstream party", "challenger party"))) %>% 
+  dplyr::mutate(past_pm=cumsum(prime_minister)) %>% 
+  dplyr::mutate(past_pm = case_when(past_pm >= 1 ~ "has been/is pm party",
+                                    past_pm == 0 ~ "no pm party",
+                                       TRUE ~ "")) %>%
+  
+  dplyr::mutate(past_pm=factor(past_pm, levels = c("no pm party", "has been/is pm party"))) %>% 
+  dplyr::mutate(past_pm_lag1=cumsum(prime_minister_lag1)) %>% 
+  dplyr::mutate(past_pm_lag1 = case_when(past_pm_lag1 >= 1 ~ "has been/is pm party",
+                                    past_pm_lag1 == 0 ~ "no pm party",
+                                       TRUE ~ "")) %>% 
+  dplyr::mutate(past_pm_lag1=factor(past_pm_lag1, levels = c("no pm party", "has been/is pm party"))) %>% 
+  ungroup(.) %>% 
+  mutate_at(vars(vote_share, seat_share), ~case_when(exclude==1 ~ 0, 
+                                                     TRUE ~ as.numeric(.))) %>% 
+  select(-exclude) %>% 
+  mutate_at(vars(movement, ideology), ~ str_to_sentence(.)) %>% 
+  arrange(country, party_id, year)
+
+```
+
+
+```{r, message = F, include = F}
+##merge link_table with VDEM
+# download and read Party Facts mapping table
+file_name <- "context_data/partyfacts-mapping.csv"
+if( ! file_name %in% list.files()) {
+  url <- "https://partyfacts.herokuapp.com/download/external-parties-csv/"
+  download.file(url, file_name)
+}
+partyfacts_raw <- read_csv(file_name, guess_max = 50000)
+partyfacts <- partyfacts_raw %>% filter(! is.na(partyfacts_id))
+# link datasets (select only linked parties)
+dataset_1 <- partyfacts %>% filter(dataset_key == "vparty")
+dataset_2 <- partyfacts %>% filter(dataset_key == "parlgov")
+link_table <-
+  dataset_1 %>%
+  inner_join(dataset_2, by = c("partyfacts_id" = "partyfacts_id")) %>% 
+  select(dataset_party_id.x, dataset_party_id.y)
+
+colnames(link_table) <- c("vdem_id", "parlgov_id")
+
+link_table <- link_table %>% 
+  mutate_all(~ as.numeric(.)) %>% 
+  distinct(vdem_id, .keep_all = TRUE)
+
+
+v_dem <- vdemdata::vparty %>% 
+  select(v2paid, year, country_name, v2padisa, v2panom) 
+
+colnames(v_dem) <- paste("VDEM", colnames(v_dem), sep = "_")
+
+v_dem <- v_dem %>% 
+  dplyr::rename(vdem_id=VDEM_v2paid) %>% 
+  distinct(vdem_id, VDEM_year, .keep_all = TRUE)
+
+v_dem <- left_join(v_dem, link_table, by="vdem_id") %>% 
+  filter(!is.na(parlgov_id))
+
+###fill v-dem year/party 
+
+v_dem <- plyr::ddply(v_dem, plyr::.(vdem_id), mutate,  
+                     VDEM_first_year=min(VDEM_year, na.rm = TRUE))
+v_dem <- plyr::ddply(v_dem, plyr::.(vdem_id), mutate,  
+                     VDEM_last_year=max(VDEM_year, na.rm = TRUE))
+
+v_dem <- v_dem %>%
+  group_by(vdem_id) %>%
+  dplyr::rename(VDEM_year_new=VDEM_year) %>% 
+  complete(VDEM_year_new = seq(1945, 2023, 1))
+
+v_dem <- v_dem %>%
+  arrange(vdem_id, VDEM_year_new) %>% 
+  group_by(vdem_id) %>%
+  fill(VDEM_country_name, .direction = "updown") %>%
+  fill(VDEM_v2padisa, .direction = "down") %>%
+  fill(VDEM_v2panom, .direction = "down") %>%
+  fill(parlgov_id, .direction = "updown") %>%
+  fill(VDEM_first_year, .direction = "updown") %>%
+  fill(VDEM_last_year, .direction = "updown") %>% 
+  filter(!(VDEM_year_new<VDEM_first_year | VDEM_year_new>VDEM_last_year)) %>% 
+  select(-VDEM_first_year, -VDEM_last_year, -VDEM_country_name) %>% 
+  dplyr::rename(year=VDEM_year_new,
+                party_id=parlgov_id) %>% 
+  distinct(party_id, year, .keep_all = TRUE) %>% 
+  group_by(party_id) %>% 
+  arrange(party_id, year) %>% 
+  mutate(VDEM_v2padisa_lag1=dplyr::lag(VDEM_v2padisa, 1)) %>% 
+  mutate(VDEM_v2panom_lag1=dplyr::lag(VDEM_v2panom, 1)) %>% 
+  ungroup(.) 
+
+##merge VDEM with DATA
+
+dat<- merge(dat, v_dem, by = c("year", "party_id"), all.x = T)
+ 
+```
+
+
+```{r, message = F, include = F}
+
+#######################
+####org_refr coding####
+#######################
+
+dat <- dat %>%
+  mutate(org_reference = case_when(is.na(movement) & 
+                                     party_in_title=="Party in title" ~ "Party", 
+                                   TRUE ~ movement)) %>% 
+  mutate(org_reference = ifelse(is.na(org_reference), "No reference", org_reference)) %>%
+  dplyr::select(-movement)
+
+#########################
+#### Ideology coding ####
+#########################
+
+dat <- dat %>%
+  mutate(ideology=case_when(
+                            ideology=="Broad reference to values" ~ "Values", 
+                            ideology=="Broad reference with action verb" ~ "Action verb",
+                            ideology=="Broad reference with country name" ~ "Name of the country",
+                            ideology %in% c("Christian", "Christian/people’s party") ~ "Christian",
+                            ideology %in% c("Democracy", "Democratic") ~ "Democratic",
+                            ideology=="Free democrats" ~ "Liberal",
+                            ideology=="Independent" ~ "Independents",
+                            ideology %in% c("Linguistic group", "Broad reference with region name") 
+                            ~ "Name of the region/ ethnic group",
+                            ideology %in% c("Center") ~ "Centrist",
+                            ideology=="Progress" ~ "Progressive",
+                            ideology=="Anti-federalist" ~ "Anti-eu", # it's only two observations
+                            ideology %in% c("Social-democratic", "Social democratic",
+                                            "Social democracy") ~ "Social-democratic",
+                            ideology %in% c("People’s party", "People's party") ~ "People's party",
+                            ideology == "Right, centre" ~ "Right",
+                            ideology == "Name of leader" ~ "Name of the leader",
+                            ideology %in% c("Christian democrat", 
+                                            "Christian-democratic") ~ "Christian-democratic",
+                            ideology %in% c("Bread reference", "Broad reference") ~ "Broad reference",
+                            ideology == "Green, left" ~ "Green",
+                            TRUE ~ ideology)) 
+```
+
+
+```{r, message = F, include = F}
+
+#################################
+####typology vars and coding#####
+#################################
+
+dat <- dat %>% 
+  mutate(noparty_in_title = ifelse(party_in_title == 'No party in title', 1, 0)) %>% 
+  group_by(party_id) %>% 
+  mutate(times_party_dropped = ifelse(noparty_in_title==1, n_distinct(year_change), 0)) %>% 
+  ungroup(.)
+
+
+party <- c("party", NA)
+action_based <- c("Rally", "Block", "Front", "Forces", "Force", 
+                  "Movement", "Action", "Attack", "Fighters", 
+                  "March", "Revolution")
+organizational_based <- c("Association", "Forum", "Alliance", "Coalition", 
+                          "Federation", "Congress", "Convention", "Network", 
+                          "Platform", "Society", "Brotherhood", "Alliance/union", "Confederation")
+ideological_based <- c("Unity", "Alternative", "Union", 
+                       "Radicalist", "Radical", "Renewal")
+other_refs <- c("Only ideological ref.", "No reference", "Others", 
+           "Group", "List", "League", "Pole", "Centre", "Group", 
+           "Green", "Ring", "Committee", "Team", "House", "Section", "The way", 
+           "Appeal", "Alignment", "Program",  "Agreement", "Convergence")
+
+
+prog_refs <- c("Liberal", "Communist", "Social-democratic", "Republican", "Labour", "Centrist", "Socialist", "Left", "Christian", "Conservative", "Green", "National", "Independents", "Right", "Monarchist", "Radical", "Rural", "Anti-eu", "Progressive", "Social", "Independence", "Agrarian", "Anti-federalist", "Homeland", "Patriotic", "Pro-eu", "Humanist", "Pirate", "Libertarian", "Federalist", "Moderate", "National-socialist", "Christian-democratic", "Christian-social", "Ecological", "")
+  
+catch_all_ref <- c("Broad reference", "Values", "Action verb", "People's party", "Name of the country", "Democratic", "Name of the leader", "Anti-elitism", "Reformist", "Social group", "Name of the region/ ethnic group", "Social group with action verb", "People", "", "Centre", "Freedom", NA)
+
+existing_names <- unique(dat$org_reference)
+
+setdiff(existing_names, c(action_based, ideological_based, other_refs, organizational_based))
+
+dat <- dat %>%
+  dplyr::rename(no_party = noparty_in_title) %>% 
+  mutate(no_party = case_when(no_party == 1 ~ "No Party Label",
+    no_party == 0 ~ "Party Label")) %>% 
+  mutate(action_based = ifelse(org_reference %in% action_based, "action based", "not action based"),
+         ideological_based = ifelse(org_reference %in% ideological_based, "ideological based", "not ideological based"),
+         organizational_based = ifelse(org_reference %in% organizational_based, "organizational based","not organizational based")) %>% 
+  mutate(movement = case_when(
+    organizational_based == "organizational based" ~ "organizational based",
+    ideological_based == "ideological based" ~ "ideological based",
+    action_based == "action based" ~ "action based",
+    org_reference %in% other_refs ~ "other",
+    org_reference=="Party" ~ as.character(NA))) %>% 
+  mutate(movement=factor(movement, levels=c("organizational based", "action based",
+                                               "ideological based", "no movement ref"))) %>% 
+  mutate(broad_movement_ref=ifelse(!is.na(movement), "broad movement ref", "no movement ref")) %>% 
+  mutate(broad_movement_ref=factor(broad_movement_ref, levels=c("no movement ref", "broad movement ref"))) %>% 
+  mutate(catch_all_ref = case_when(ideology %in% catch_all_ref ~ 1,
+                                   ideology %in% prog_refs ~ 0,
+                                   TRUE ~ as.numeric(NA)))
+
+dat$movement[is.na(dat$movement)] <- "no movement ref"
+
+dat <- dat %>% # to distinguish transformed parties
+  mutate(no_party_num = case_when(no_party == "No Party Label" ~ 1,
+                                  no_party == "Party Label" ~ 0)) %>% 
+  group_by(country, party_id) %>% 
+  mutate(ch=mean(no_party_num, na.rm=TRUE)) %>% 
+  ungroup(.) %>% 
+  mutate(transformed = case_when(ch %in% c(0, 1) ~ 0,
+                                 TRUE ~ 1)) %>% 
+  select(-ch) %>% 
+  mutate(action_based_num = case_when(action_based == "action based" ~ 1,
+                           action_based == "not action based" ~ 0)) %>%
+  group_by(country, party_id) %>%
+  mutate(ch=mean(action_based_num, na.rm=TRUE)) %>%
+  ungroup(.) %>%
+  mutate(transformed_all = ifelse(!(ch %in% c(0, 1)), 1, transformed)) %>%
+  select(-ch) %>%
+  group_by(country, party_id) %>% 
+  mutate(ch=mean(catch_all_ref, na.rm=TRUE)) %>% 
+  ungroup(.) %>% 
+  mutate(transformed_all = ifelse(!(ch %in% c(0, 1)), 1, transformed_all)) %>% 
+  select(-ch) %>% 
+  select(-action_based_num, -no_party_num)
+
+```
+
+# to exclude the part of the panel over the max_year
+
+```{r, message = F, include = F}
+
+orig_max_year <- dat %>% 
+  filter(orig_obs==1) %>% 
+  select(party_id, year_change) %>% 
+  arrange(party_id, year_change) %>% 
+  dplyr::group_by(party_id) %>% 
+  dplyr::mutate(orig_max_year=max(year_change, na.rm = TRUE)) %>% 
+  select(-year_change) %>% 
+  unique(.) 
+
+elect_max_year <- dat %>% 
+  filter(!is.na(last_election)) %>% 
+  select(party_id, country, last_election) %>% 
+  mutate(last_election=year(last_election)) %>% 
+  dplyr::group_by(party_id) %>% 
+  dplyr::mutate(elect_max_year=max(last_election, na.rm = TRUE)) %>% 
+  select(-last_election) %>% 
+  unique(.) %>% 
+  group_by(country) %>% 
+  mutate(max_by_country=max(elect_max_year)) %>% 
+  ungroup(.) %>% 
+  mutate(elect_max_year=ifelse(elect_max_year==max_by_country, 2023, elect_max_year)) %>% # I need to assume that in the countries where there has not been an election after 2023, the parties from the last election survived until 2023
+  select(party_id, elect_max_year)
+
+max_year <- merge(orig_max_year, elect_max_year, all=TRUE) %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(max_year=max(c_across(orig_max_year:elect_max_year))) %>% 
+  dplyr::mutate(max_year=case_when(is.na(max_year) & !is.na(orig_max_year) & is.na(elect_max_year) ~ orig_max_year,
+                                   is.na(max_year) & !is.na(elect_max_year) & is.na(orig_max_year) ~ elect_max_year,
+                                   TRUE ~ max_year)) %>% 
+  select(party_id, max_year) %>% 
+  unique(.) 
+
+dat <- left_join(dat, max_year) %>% 
+  filter(year<=max_year) 
+  
+```
+
+# to create the new party identifier
+
+```{r, message = F, include = F}
+
+dat <- dat %>% 
+  group_by(party_id) %>% 
+  mutate(first_election=case_when(is.na(first_election) ~ 
+                                    min(election_date, na.rm = TRUE),
+                                  TRUE ~ first_election)) %>% 
+  mutate(last_election=case_when(is.na(last_election) ~ 
+                                    max(election_date, na.rm = TRUE),
+                                  TRUE ~ last_election)) %>% 
+  ungroup(.)
+
+elect_id1 <- dat %>% 
+  select(party_id, election_date, first_election) %>% 
+  arrange(party_id, election_date) %>% 
+  unique(.) %>% 
+  filter(election_date>=first_election) %>% 
+  select(-first_election)
+
+# unique id for each party in each election after their first election
+elect_id1 <- plyr::ddply(elect_id1, plyr::.(party_id), mutate, elect_id = seq_along(election_date))
+
+elect_id1 <- elect_id1 %>% 
+  mutate(elect_id=elect_id-1)
+
+elect_id2 <- dat %>% 
+  select(party_id, election_date, first_election) %>% 
+  arrange(party_id, -as.numeric(election_date)) %>% 
+  unique(.) %>% 
+  filter(election_date<first_election) %>% 
+  select(-first_election)
+
+# unique id for each party in each election before their first election
+elect_id2 <- plyr::ddply(elect_id2, plyr::.(party_id), mutate, elect_id = seq_along(election_date))
+
+elect_id2 <- elect_id2 %>% 
+  mutate(elect_id=0-elect_id)
+
+elect_id <- bind_rows(elect_id1, elect_id2) %>% 
+  arrange(party_id, election_date)
+
+dat <- left_join(dat, elect_id)
+
+dat <- dat %>% 
+  dplyr::group_by(party_id) %>% 
+  dplyr::mutate(new_party=ifelse(elect_id<1, 1, 0)) %>% 
+  ungroup(.)
+
+```
+
+```{r, message = F, include = F}
+
+max_min <- dat %>% 
+  select(party_id, year, max_year) %>% 
+  group_by(party_id) %>% 
+  mutate(min_year=min(year, na.rm=TRUE)) %>% 
+  mutate(party_age=(year-min_year)+1) %>% # to avoid zeros that would fall out with the log.
+  arrange(party_id, year) %>% 
+  mutate(party_age_lag1=dplyr::lag(party_age, 1)) %>% 
+  ungroup(.) %>% 
+  select(party_id, year, min_year, party_age, party_age_lag1) %>% 
+  unique(.)
+
+dat <- left_join(dat, max_min)
+
+rm(max_min)
+
+```
+
+```{r, message = F, include = F}
+
+dat <- dat %>% 
+  mutate(past_pm_lag1 = case_when(past_pm_lag1 == "has been/is pm party" ~ 1,
+                      past_pm_lag1 == "no pm party" ~ 0)) %>% 
+  mutate_at(vars(vote_share_lag1, seat_share_lag1, rel_vote_change_lag1,
+                 cabinet_party_lag1, past_pm_lag1), ~ 
+              ifelse(first_election!=1 & is.na(.), 0, .)) %>% 
+  mutate(vote_share_lag1=ifelse(is.na(vote_share), NA, vote_share_lag1)) %>% 
+  mutate(seat_share_lag1=ifelse(is.na(seat_share), NA, seat_share_lag1)) %>% 
+  mutate(rel_vote_change_lag1=ifelse(is.na(rel_vote_change), NA, rel_vote_change_lag1)) %>% 
+  mutate(cabinet_party_lag1=ifelse(is.na(cabinet_party), NA, cabinet_party_lag1)) %>% 
+  mutate(past_pm_lag1=ifelse(is.na(past_pm), NA, past_pm_lag1)) %>% 
+  mutate(past_pm_lag1 = case_when(past_pm_lag1 == 1 ~ "has been/is pm party",
+                      past_pm_lag1 == 0 ~ "no pm party")) %>% 
+  mutate(past_pm_lag1 = factor(past_pm_lag1, levels=c("no pm party",
+                                                      "has been/is pm party"))) %>% 
+  mutate(typology=case_when(no_party=="Party Label" & catch_all_ref==0 ~ "Ideological party",
+                            no_party=="Party Label" & catch_all_ref==1 ~ "Nonideological party",
+                            no_party=="No Party Label" & catch_all_ref==0 
+                            & action_based=="not action based" ~ "Ideological nonparty",
+                            no_party=="No Party Label" & catch_all_ref==1 
+                            & action_based=="not action based" ~ "Nonideological nonparty",
+                            no_party=="No Party Label" & catch_all_ref==0 
+                            & action_based=="action based"  ~ "Ideological movement",
+                            no_party=="No Party Label" & catch_all_ref==1 
+                            & action_based=="action based" ~ "Nonideological movement",
+                            TRUE ~ as.character(NA))) %>% 
+  mutate(typology=factor(typology, levels=c("Ideological party", "Ideological nonparty",
+                                            "Ideological movement", "Nonideological party",
+                                            "Nonideological nonparty", "Nonideological movement"))) %>% 
+  mutate(family_name= case_when(party_name=="Slovenska nacionalna stranka" ~ "Right-wing",
+                                party_name=="Movimento 5 Stelle" ~ "Green/Ecologist",
+                                TRUE ~ family_name)) %>% 
+  mutate(family_name_short=case_when(family_name=="Right-wing" ~ "right",
+                                     family_name=="Green/Ecologist" ~ "eco",
+                                     TRUE ~ family_name_short)) %>% 
+  group_by(party_id) %>% 
+  mutate(nr_years=n_distinct(year),
+         always_coalition=sum(coalition)/nr_years) %>% 
+  ungroup(.) %>% 
+  filter(always_coalition!=1) %>% # I drop the cases that are always coalitions
+  select(-nr_years, -always_coalition) 
+  
+
+```
+
+
+```{r, message = F, include = F}
+
+d_lng <- dat
+
+save(d_lng, file = "dataset_long.Rdata")
+```
+
+
+```{r, message = F, include = F}
+```

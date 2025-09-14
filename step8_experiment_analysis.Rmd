@@ -1,0 +1,1760 @@
+---
+title: "Step8: Experiment analysis"
+author: "Endre Borbáth and Swen Hutter"
+output: html_document
+---
+
+# Loading packages
+
+```{r setup, include=FALSE, echo=FALSE}
+# Setup
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 999)
+
+# load packages
+library(haven)
+library(tidyverse)
+library(ggplot2)
+library(sjPlot)
+library(sandwich)
+library(lmtest)
+library(stringr)
+library(lme4)
+# devtools::install_github("leeper/cregg")
+library(cregg)
+
+# clear workspace and cache
+remove(list = ls())
+gc()
+
+image_type <- ".eps"
+
+range01 <- function(x){(x-min(x, na.rm = TRUE))/(max(x, na.rm = TRUE)-min(x, na.rm = TRUE))}
+
+colors <- thematic::okabe_ito(8)[-6]
+
+# to calculate margins with 90 and 95 percent CIs
+margins_2ci <- function(mod) { 
+
+mar <- margins(mod, type="response")
+
+plot_dat <- summary(mar, level = 0.95) %>% 
+  rename(`2.5 %` = lower, 
+         `97.5 %` = upper) 
+
+plot_dat2 <- summary(mar, level = 0.90) %>% 
+  select(lower, upper) %>% 
+  rename(`5 %` = lower,
+         `95 %` = upper)
+
+plot_dat <- bind_cols(plot_dat, plot_dat2)
+  
+plot_dat$model <- as.character(deparse(substitute(mod)))
+
+return(plot_dat)
+
+}
+
+```
+
+# Data management
+
+```{r, include=FALSE}
+# creating a joint data file with the three countries
+
+load("survey_data/AU_survey.Rdata")
+load("survey_data/DE_survey.Rdata")
+load("survey_data/HU_IT_survey.Rdata")
+
+DE_dat_subset <- DE_dat %>%
+  select(-party_in_CJ2) %>% 
+  mutate(party_in_CJ2=party_txt) %>% 
+  select(
+    CJ1Name, CJ1Organization, CJ1Form, CJ1Scale, CJ1TradeOff,
+    CJ2Name, CJ2Organization, CJ2Form, CJ2Scale, CJ2TradeOff,
+    party_in_CJ2, imp_issue, ID,
+    pid_strength, pid_DE, act_demo,
+    mbr_union, mbr_prty, mbr_chrc, mbr_sprt, mbr_leis, mbr_envi,
+    mbr_neig, mbr_rght, mbr_chrt, mbr_ptrt, mbr_farm, mbr_busi, mbr_angl, mbr_othe,
+    lrscale, int_eff, ext_eff, stfdem
+  ) %>%
+  rename(pid=pid_DE) %>% 
+  mutate_at(vars(
+    CJ1Name, CJ1Organization, CJ1Form,
+    CJ2Name, CJ2Organization, CJ2Form,
+    imp_issue, party_in_CJ2, pid, int_eff, ext_eff
+  ), ~ as.character(as_factor(.))) %>%
+  mutate(market = "Germany") %>%
+  mutate(ID = paste0(ID, "4"))
+
+AU_dat_subset <- AU_dat %>%
+  select(
+    CJ1Name, CJ1Organization, CJ1Form, CJ1Scale, CJ1TradeOff,
+    CJ2Name, CJ2Organization, CJ2Form, CJ2Scale, CJ2TradeOff,
+    party_in_CJ2, imp_issue, ID,
+    pid_strength, pid, act_demo,
+    mbr_union, mbr_prty, mbr_chrc, mbr_sprt, mbr_leis, mbr_envi,
+    mbr_neig, mbr_rght, mbr_chrt, mbr_ptrt, mbr_farm, mbr_busi, mbr_angl, mbr_othe,
+    lrscale, int_eff, ext_eff, stfdem
+  ) %>%
+  mutate_at(vars(
+    CJ1Name, CJ1Organization, CJ1Form,
+    CJ2Name, CJ2Organization, CJ2Form,
+    imp_issue, party_in_CJ2, pid, int_eff, ext_eff
+  ), ~ as.character(as_factor(.))) %>%
+  mutate(market = "Austria") %>%
+  mutate(ID = paste0(ID, "1"))
+
+HU_IT_dat_subset <- HU_IT_dat %>%
+  select(
+    CJ1Name, CJ1Organization, CJ1Form, CJ1Scale, CJ1TradeOff,
+    CJ2Name, CJ2Organization, CJ2Form, CJ2Scale, CJ2TradeOff,
+    imp_issue, party_in_CJ2_IT, party_in_CJ2_HU, pid_HU, pid_IT,
+    market, ID,
+    pid_strength, act_demo,
+    mbr_union, mbr_prty, mbr_chrc, mbr_sprt, mbr_leis, mbr_envi,
+    mbr_neig, mbr_rght, mbr_chrt, mbr_ptrt, mbr_farm, mbr_busi, mbr_angl, mbr_othe,
+    lrscale, int_eff, ext_eff, stfdem
+  ) %>%
+  mutate_at(vars(
+    CJ1Name, CJ1Organization, CJ1Form,
+    CJ2Name, CJ2Organization, CJ2Form,
+    imp_issue, party_in_CJ2_IT, party_in_CJ2_HU,
+    pid_HU, pid_IT, int_eff, ext_eff
+  ), ~ as.character(as_factor(.))) %>%
+  mutate(party_in_CJ2 = case_when(
+    market == 3 ~ party_in_CJ2_HU,
+    market == 2 ~ party_in_CJ2_IT,
+    TRUE ~ as.character(NA)
+  )) %>%
+  mutate(pid = case_when(
+    market == 3 ~ pid_HU,
+    market == 2 ~ pid_IT,
+    TRUE ~ as.character(NA)
+  )) %>%
+  select(-party_in_CJ2_HU, -party_in_CJ2_IT, -pid_HU, -pid_IT) %>%
+  mutate(market = ifelse(market == 3, "Hungary", "Italy")) %>%
+  mutate(ID = case_when(market == "Hungary" ~ paste0(ID, "2"), market == "Italy" ~ paste0(ID, "3")))
+
+
+dat <- bind_rows(AU_dat_subset, HU_IT_dat_subset) 
+
+dat <- bind_rows(dat, DE_dat_subset) %>%
+  mutate(CJ1Name = case_when(
+    CJ1Name %in% c("New Austria", "New Hungary", "New Italy", "New Germany") ~ "New [country]",
+    grepl("Party", CJ1Name) ~ "Party for a new [country]",
+    grepl("Movement", CJ1Name) ~ "Movement for a new [country]",
+    TRUE ~ NA,
+  )) %>%
+  mutate(CJ1Name = factor(CJ1Name, levels = c("New [country]", "Party for a new [country]", "Movement for a new [country]"))) %>%
+  mutate(CJ1Organization = factor(CJ1Organization, levels = c("No organization", "Strong leader", "Close links to CSOs"))) %>%
+  mutate(CJ1Form = factor(CJ1Form, levels = c("No action form", "Parliament", "Demonstrations"))) %>%
+  mutate(imp_issue = factor(imp_issue, levels = c("Taxes and benefits", "Immigration", "Climate"))) %>%
+  mutate(CJ2Name = factor(CJ2Name, levels = c(
+    "No name change", "Takes-up party", "Deletes party",
+    "Takes-up movement", "Deletes movement"
+  ))) %>%
+  mutate(CJ2Organization = factor(CJ2Organization, levels = c(
+    "No organization", "Strong leader", "Close links to CSOs"
+  ))) %>%
+  mutate(CJ2Form = factor(CJ2Form, levels = c("No action form", "Parliament", "Demonstrations"))) %>%
+  mutate_at(vars(party_in_CJ2, pid), ~ case_when(
+    grepl("Fratelli", .) ~ "FdI",
+    . == "Forza Italia" ~ "FI",
+    . == "Lega" ~ "Lega",
+    . == "Partito Democratico" ~ "PD",
+    . == "Movimento 5 Stelle" ~ "M5S",
+    . == "Alleanza Verdi e Sinistra" ~ "AVS",
+    grepl("FIDESZ", .) ~ "Fidesz",
+    . == "DK (Demokratikus Koalíció)" ~ "DK",
+    grepl("Momentum Mozgalom", .) ~ "Momentum",
+    grepl("Mi Hazánk", .) ~ "Mi Hazánk",
+    . == "Jobbik (Jobbik – Konzervatívok)" ~ "Jobbik",
+    . == "MKKP (Magyar Kétfarkú Kutya Párt)" ~ "MKKP",
+    . == "LMP (LMP – Magyarország Zöld Pártja)" ~ "LMP",
+    . == "MSZP (Magyar Szocialista Párt)" ~ "MSZP",
+    . == "PM (Párbeszéd – Zöldek)" ~ "PM",
+    grepl("FPÖ", .) ~ "FPÖ",
+    . == "Grüne" ~ "Grüne",
+    . == "Bündnis 90/Die Grünen" ~ "B90/Grünen",
+    . == "None" ~ as.character(NA),
+    . == "" ~ as.character(NA),
+    TRUE ~ as.character(.)
+  )) %>%
+  mutate(party_in_CJ2 = factor(party_in_CJ2, levels = c(
+    "SPÖ", "ÖVP", "FPÖ", "Grüne", "NEOS",
+    "BIER", "MFG", "Fidesz", "DK", "Momentum", "Mi Hazánk",
+    "Jobbik", "MKKP", "LMP", "MSZP", "PM", "FdI", "FI",
+    "Lega", "PD", "M5S", "AVS", 
+    "CDU/CSU", "SPD", "B90/Grünen", 
+    "AfD", "FDP", "Die Linke", "BSW"
+  ))) %>%
+  mutate(pid = factor(pid, levels = c(
+    "SPÖ", "ÖVP", "FPÖ", "Grüne", "NEOS",
+    "BIER", "MFG", "Fidesz", "DK", "Momentum", "Mi Hazánk",
+    "Jobbik", "MKKP", "LMP", "MSZP", "PM", "FdI", "FI",
+    "Lega", "PD", "M5S", "AVS", 
+    "CDU/CSU", "SPD", "B90/Grünen", 
+    "AfD", "FDP", "Die Linke", "Other"
+  ))) %>%
+  mutate(pid_strength = case_when(
+    pid_strength == 1 | is.na(pid_strength) ~ "No PID",
+    pid_strength == 2 ~ "Only sympathizer",
+    pid_strength == 3 ~ "Quite connected",
+    pid_strength == 4 ~ "Very connected",
+    TRUE ~ as.character(NA)
+  )) %>%
+  mutate(pid_strength = factor(pid_strength, levels = c(
+    "No PID", "Only sympathizer",
+    "Quite connected", "Very connected"
+  ))) %>%
+  mutate(act_demo = case_when(
+    act_demo == 0 ~ "Never",
+    act_demo == 1 ~ "Rarely",
+    act_demo == 2 ~ "Sometimes",
+    act_demo %in% c(3, 4) ~ "Often/ very often",
+    TRUE ~ as.character(NA)
+  )) %>%
+  mutate(act_demo = factor(act_demo, levels = c("Never", "Rarely", "Sometimes", "Often/ very often"))) %>%
+  mutate_at(vars(mbr_union, mbr_prty, mbr_chrc, mbr_sprt, mbr_leis, mbr_envi, mbr_neig, mbr_rght, mbr_chrt, mbr_ptrt, mbr_farm, mbr_busi, mbr_angl, mbr_othe), ~ as.numeric(as.character(.))) %>%
+  mutate(membership_cont = (mbr_union + mbr_prty + mbr_chrc +
+    mbr_sprt + mbr_leis + mbr_envi +
+    mbr_neig + mbr_rght + mbr_chrt +
+    mbr_ptrt + mbr_farm + mbr_busi +
+    mbr_angl + mbr_othe)) %>% # union is more in Austria, but I left it in for now
+  mutate(member = ifelse(membership_cont > 0, "Member", "Non-member")) %>%
+  mutate(member = factor(member, levels = c("Non-member", "Member"))) %>%
+  mutate(lrscale_cat = case_when(
+    lrscale %in% c(0, 1) ~ "Far left",
+    lrscale %in% c(2, 3, 4) ~ "Center left",
+    lrscale == 5 ~ "Center",
+    lrscale %in% c(6, 7, 8) ~ "Center right",
+    lrscale %in% c(9, 10) ~ "Far right"
+  )) %>%
+  mutate(lrscale_cat = factor(lrscale_cat, levels = c(
+    "Far left", "Center left", "Center",
+    "Center right", "Far right"
+  ))) %>%
+  mutate(stfdem_cat = case_when(
+    stfdem %in% c(0, 1, 2) ~ "Very dissatisfied",
+    stfdem %in% c(3, 4) ~ "Somewhat dissatisfied",
+    stfdem == 5 ~ "Undecided",
+    stfdem %in% c(6, 7) ~ "Somewhat satisfied",
+    stfdem %in% c(8, 9, 10) ~ "Very satisfied"
+  )) %>%
+  mutate(stfdem_cat = factor(stfdem_cat, levels = c(
+     "Very dissatisfied", "Somewhat dissatisfied", "Undecided", 
+     "Somewhat satisfied", "Very satisfied"
+  ))) %>%
+  mutate(ext_eff = ifelse(ext_eff %in% c("Strongly", "Very strong"), "Strong/ very strong", ext_eff)) %>%
+  mutate(int_eff = factor(int_eff, levels = c("Not at all", "Very little", "Somewhat", "Completely", "A lot"))) %>%
+  mutate(ext_eff = factor(ext_eff, levels = c("Not at all", "Very little", "Somewhat", "Strong/ very strong")))
+
+
+table(dat$int_eff, dat$market, useNA = "always") # no need to collapse
+
+table(dat$ext_eff, dat$market, useNA = "always") # collapse the last two categories
+
+# table(dat$party_txt[is.na(dat$party_in_CJ2)])
+```
+
+```{r, include=FALSE}
+## populism factor
+
+AU_dat_fac <- AU_dat %>%
+  select(starts_with("pop_"), ID) %>%
+  mutate(market = "Austria") %>%
+  mutate(ID = paste0(ID, "1"))
+
+
+HU_IT_dat_fac <- HU_IT_dat %>%
+  select(starts_with("pop_"), market, ID) %>%
+  mutate(market = ifelse(market == 3, "Hungary", "Italy")) %>%
+  mutate(ID = case_when(market == "Hungary" ~ paste0(ID, "2"), market == "Italy" ~ paste0(ID, "3")))
+
+DE_dat_fac <- DE_dat %>%
+  
+  select(starts_with("pop_"), ID) %>%
+  mutate(market = "Germany") %>%
+  mutate(ID = paste0(ID, "4"))
+
+dat_fac <- bind_rows(AU_dat_fac, HU_IT_dat_fac, DE_dat_fac) %>%
+  unique(.)
+
+freq_table <- function(df, col_names) {
+  lapply(col_names, function(x) {
+    table(df[[x]], df$market, useNA = "always")
+  })
+}
+
+pop_items <- colnames(dat_fac)[grepl("pop_", colnames(dat_fac))]
+freq_table(dat_fac, pop_items)
+
+pca_result <- psych::principal(subset(dat_fac, select = pop_items), nfactors = 1, rotate = "varimax", scores = TRUE)
+
+loadings <- pca_result$loadings
+
+loadings
+
+dat_fac$pop_trust <- NULL # the three did not work well
+dat_fac$pop_ordi <- NULL # the three did not work well
+dat_fac$pop_lead <- NULL # the three did not work well
+
+pop_items <- colnames(dat_fac)[grepl("pop_", colnames(dat_fac))]
+
+pca_result <- psych::principal(subset(dat_fac, select = pop_items), nfactors = 1, rotate = "varimax", scores = TRUE)
+
+loadings <- pca_result$loadings
+
+loadings
+
+# psych::fa.diagram(pca_result)
+
+results <- as.data.frame(pca_result$scores)
+
+colnames(results) <- c("populism_factor")
+
+dat_fac <- cbind(dat_fac, results)
+
+pca_result <- prcomp(subset(dat_fac, select = c(-ID, -market)), scale. = TRUE)
+
+explained_variance <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+
+plot(explained_variance, type = "b", main = "Scree Plot")
+
+dat_fac <- dat_fac %>%
+  select(ID, market, populism_factor) %>%
+  mutate(populism_cat = cut(populism_factor, quantile(populism_factor))) %>%
+  mutate(populism_cat = as.character(as.factor(populism_cat))) %>%
+  mutate(populism_cat = case_when(
+    populism_cat == "(-3.43,-0.635]" ~ "Lowest 25%",
+    populism_cat == "(-0.635,0.0813]" ~ "Second quantile",
+    populism_cat == "(0.0813,0.732]" ~ "Third quantile",
+    populism_cat == "(0.732,2.56]" ~ "Upper 25%",
+    populism_factor < -3.43 ~ "Lowest 25%",
+    TRUE ~ as.character(NA)
+  )) %>%
+  mutate(populism_cat = factor(populism_cat, levels = c(
+    "Lowest 25%", "Second quantile",
+    "Third quantile", "Upper 25%"
+  )))
+
+table(dat_fac$populism_cat, useNA = "always")
+
+dat <- left_join(dat, dat_fac)
+
+table(dat$populism_cat, useNA = "always")
+
+table(is.na(dat$populism_cat))
+```
+
+```{r, include=FALSE}
+## trust factor
+
+AU_dat_fac <- AU_dat %>%
+  select(contains("trust"), ID) %>%
+  mutate(market = "Austria") %>%
+  mutate(ID = paste0(ID, "1"))
+
+
+HU_IT_dat_fac <- HU_IT_dat %>%
+  select(contains("trust"), market, ID) %>%
+  mutate(market = ifelse(market == 3, "Hungary", "Italy")) %>%
+  mutate(ID = case_when(market == "Hungary" ~ paste0(ID, "2"), market == "Italy" ~ paste0(ID, "3")))
+
+DE_dat_fac <- DE_dat %>%
+  select(contains("trust"), ID) %>% 
+  mutate(market = "Germany") %>%
+  mutate(ID = paste0(ID, "4"))
+
+dat_fac <- bind_rows(AU_dat_fac, HU_IT_dat_fac)
+
+dat_fac <- bind_rows(dat_fac, DE_dat_fac) %>%
+  unique(.)
+
+freq_table <- function(df, col_names) {
+  lapply(col_names, function(x) {
+    table(df[[x]], df$market, useNA = "always")
+  })
+}
+
+trust_items <- colnames(dat_fac)[grepl("trust", colnames(dat_fac))]
+freq_table(dat_fac, trust_items)
+
+pca_result <- psych::principal(subset(dat_fac, select = trust_items), nfactors = 1, rotate = "varimax", scores = TRUE)
+
+loadings <- pca_result$loadings
+
+loadings
+
+results <- as.data.frame(pca_result$scores)
+
+colnames(results) <- c("trust_factor")
+
+dat_fac <- cbind(dat_fac, results)
+
+table(dat_fac$trust_factor[dat_fac$market=="Germany"])
+
+pca_result <- prcomp(subset(dat_fac, select = c(-ID, -market)), scale. = TRUE)
+
+explained_variance <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+
+plot(explained_variance, type = "b", main = "Scree Plot")
+
+dat_fac <- dat_fac %>%
+  select(ID, market, trust_factor) %>%
+  mutate(trust_cat = cut(trust_factor, quantile(trust_factor))) %>%
+  mutate(trust_cat = as.character(as.factor(trust_cat))) %>%
+  mutate(trust_cat = case_when(
+    trust_cat == "(-1.59,-0.831]" ~ "Lowest 25%",
+    trust_cat == "(-0.831,-0.0863]" ~ "Second quantile",
+    trust_cat == "(-0.0863,0.731]" ~ "Third quantile",
+    trust_cat == "(0.731,3.13]" ~ "Upper 25%",
+    trust_factor < -1.59 ~ "Lowest 25%",
+    TRUE ~ as.character(NA)
+  )) %>%
+  mutate(trust_cat = factor(trust_cat, levels = c(
+    "Lowest 25%", "Second quantile",
+    "Third quantile", "Upper 25%"
+  )))
+
+dat <- left_join(dat, dat_fac)
+
+table(dat$trust_cat, useNA = "always")
+
+table(is.na(dat$trust_cat), dat$market)
+
+```
+
+
+# Main text
+
+## Figure 5: New party branding conjoint experiment
+
+```{r, warning=FALSE, echo=FALSE}
+
+plot_dat <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, estimate = "mm") %>%
+  add_row(level = "Name", feature = "CJ1Name") %>%
+  add_row(level = "Organization", feature = "CJ1Organization") %>%
+  add_row(level = "Repertoire", feature = "CJ1Form") %>% 
+  mutate(level=case_when(level=="No organization" ~ "[missing]",
+                         level=="No action form" ~ "[missing] ",
+                         TRUE ~ level))
+
+levels_order <- rev(c("Name",
+                      "New [country]", "Party for a new [country]",
+                      "Movement for a new [country]", "Organization",
+                      "[missing]", "Strong leader", "Close links to CSOs",
+                      "Repertoire", "[missing] ", "Parliament", "Demonstrations"))
+
+p <- ggplot(plot_dat, aes(y = level, color = feature, shape=feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_hline(yintercept = 12, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper)) +
+  theme_linedraw() +
+  xlab("Marginal means") +
+  ylab("") +
+  # Add extra space on the left so the axis line and labels aren’t pushed right
+  scale_x_continuous(expand = expansion(mult = c(0.1, 0.05))) +
+  scale_y_discrete(
+    limits = levels_order,
+    labels = c(
+      "Name" = expression(underline(bolditalic("Name"))),
+      "New [country]" = "New [country]",
+      "Party for a new [country]" = "Party for a new [country]",
+      "Movement for a new [country]" = "Movement for a new [country]",
+      "Organization" = expression(underline(bolditalic("Organization"))),
+      "[missing]" = "[missing]",
+      "Strong leader" = "Strong leader",
+      "Close links to CSOs" = "Close links to CSOs",
+      "Repertoire" = expression(underline(bolditalic("Repertoire"))),
+      "[missing] " = "[missing]",
+      "Parliament" = "Parliament",
+      "Demonstrations" = "Demonstrations"
+    )
+  ) +
+  scale_color_manual(
+    values=c("#D55E00", "#56B4E9", "#0072B2"), 
+    labels = c("Name", "Organization", "Repertoire"),
+    breaks = c("CJ1Name", "CJ1Organization", "CJ1Form")
+  ) +
+  scale_shape_manual(
+    values=c(15, 17, 16), 
+    labels = c("Name", "Organization", "Repertoire"),
+    breaks = c("CJ1Name", "CJ1Organization", "CJ1Form")
+  ) +
+  theme(
+    legend.title = element_blank(), 
+    legend.position = "bottom",
+    axis.ticks.y = element_blank(),
+    legend.key.width = unit(1.5, "cm"),
+  )
+
+ggsave(
+  path = "main_text/figures/",
+  filename = "Figure5.png",
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+
+```
+
+# Appendix D
+
+## Figure 2: Parties rebranding conjoint experiment
+
+```{r, warning=FALSE, echo=FALSE}
+
+plot_dat <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, estimate = "mm") %>%
+  add_row(level = "Name", feature = "CJ2Name") %>%
+  add_row(level = "Organization", feature = "CJ2Organization") %>%
+  add_row(level = "Repertoire", feature = "CJ2Form") %>% 
+  mutate(level=case_when(level=="No organization" ~ "[missing]",
+                         level=="No action form" ~ "[missing] ",
+                         TRUE ~ level))
+
+levels_order <- rev(c("Name",
+                      "No name change", "Takes-up party",
+                      "Deletes party", "Takes-up movement", "Deletes movement", "Organization",
+                      "[missing]", "Strong leader", "Close links to CSOs",
+                      "Repertoire", "[missing] ", "Parliament", "Demonstrations"))
+
+p <- ggplot(plot_dat, aes(y = level, color = feature, shape=feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_hline(yintercept = 14, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper)) +
+  theme_linedraw() +
+  xlab("Marginal means") +
+  ylab("") +
+  # Add extra space on the left so the axis line and labels aren’t pushed right
+  scale_x_continuous(expand = expansion(mult = c(0.1, 0.05))) +
+  scale_y_discrete(
+    limits = levels_order,
+    labels = c(
+      "Name" = expression(underline(bolditalic("Name"))),
+      "No name change" = "No name change", 
+      "Takes-up party" = "Takes-up party",
+      "Deletes party" = "Deletes party", 
+      "Takes-up movement" = "Takes-up movement", 
+      "Deletes movement" = "Deletes movement",
+      "Organization" = expression(underline(bolditalic("Organization"))),
+      "[missing]" = "[missing]",
+      "Strong leader" = "Strong leader",
+      "Close links to CSOs" = "Close links to CSOs",
+      "Repertoire" = expression(underline(bolditalic("Repertoire"))),
+      "[missing] " = "[missing]",
+      "Parliament" = "Parliament",
+      "Demonstrations" = "Demonstrations"
+    )
+  ) +
+  scale_color_manual(
+    values=c("#D55E00", "#56B4E9", "#0072B2"), 
+    labels = c("Name", "Organization", "Repertoire"),
+    breaks = c("CJ2Name", "CJ2Organization", "CJ2Form")
+  ) +
+  scale_shape_manual(
+    values=c(15, 17, 16), 
+    labels = c("Name", "Organization", "Repertoire"),
+    breaks = c("CJ2Name", "CJ2Organization", "CJ2Form")
+  ) +
+  theme(
+    legend.title = element_blank(), 
+    legend.position = "bottom",
+    axis.ticks.y = element_blank(),
+    legend.key.width = unit(1.5, "cm"),
+  )
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_main_tradeoff", image_type),
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+
+```
+
+# Appendix E
+
+## Figure 1: New party branding conjoint experiment - continuous dependent variable
+
+```{r, warning=FALSE, echo=FALSE}
+cj(dat, CJ1Scale ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, estimate = "mm") %>%
+  add_row(level = " ", feature = "CJ1Name") %>%
+  add_row(level = "  ", feature = "CJ1Organization") %>%
+  ggplot(aes(y = level, color = feature)) +
+  # # geom_vline(xintercept = 0, color = "grey") +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper)) +
+  theme_minimal() +
+  xlab("") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "New [country]", "Party for a new [country]",
+    "Movement for a new [country]", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_color_manual(
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("CJ1Name", "CJ1Organization", "CJ1Form")
+  ) +
+  theme(legend.title = element_blank(), legend.position = "bottom")
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_main_cont", image_type),
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+```
+
+## Figure 2: Parties re-branding conjoint experiment - continuous dependent variable
+
+```{r, warning=FALSE, echo=FALSE}
+plot_dat <- cj(dat, CJ2Scale ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, estimate = "mm") %>%
+  add_row(level = " ", feature = "CJ2Name") %>%
+  add_row(level = "  ", feature = "CJ2Organization")
+
+ggplot(plot_dat, aes(y = level, color = feature)) +
+  # geom_vline(xintercept = 0, color = "grey") +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper)) +
+  theme_minimal() +
+  xlab("") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "No name change", "Takes-up party",
+    "Deletes party", "Takes-up movement", "Deletes movement", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_color_manual(
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("CJ2Name", "CJ2Organization", "CJ2Form")
+  ) +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom",
+    legend.key.width = unit(1, "cm"),
+  )
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_main_cont", image_type),
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+```
+
+## Figure 3: Austria: New party branding conjoint experiment
+## Figure 4: Italy: New party branding conjoint experiment
+## Figure 5: Hungary: New party branding conjoint experiment
+## Figure 6: Germany: New party branding conjoint experiment
+
+
+```{r, warning=FALSE, echo=FALSE}
+for (i in c("Austria", "Italy", "Hungary", "Germany")) {
+  cj(subset(dat, market == i), CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, estimate = "mm") %>%
+    add_row(level = " ", feature = "CJ1Name") %>%
+    add_row(level = "  ", feature = "CJ1Organization") %>%
+    ggplot(aes(y = level, color = feature)) +
+    # # geom_vline(xintercept = 0, color = "grey") +
+    geom_hline(yintercept = 4, color = "white", size = 10) +
+    geom_hline(yintercept = 8, color = "white", size = 10) +
+    geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper)) +
+    theme_minimal() +
+    xlab("Marginal means") +
+    ylab("") +
+    scale_y_discrete(limits = rev(c(
+      "New [country]", "Party for a new [country]",
+      "Movement for a new [country]", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+    scale_color_manual(
+      values = colors[1:3],
+      labels = c("Name", "Organization", "Action form"),
+      breaks = c("CJ1Name", "CJ1Organization", "CJ1Form")
+    ) +
+    theme(legend.title = element_blank(), legend.position = "bottom")
+
+  ggsave(
+    path = "appendix/figures/",
+    filename = paste0("CJ1_main_tradeoff_", i, image_type),
+    width = 6,
+    height = 4,
+    dpi = 400
+  )
+}
+```
+
+## Figure 7: Austria: Parties re-branding conjoint experiment
+## Figure 8: Italy: Parties re-branding conjoint experiment
+## Figure 9: Hungary: Parties re-branding conjoint experiment
+## Figure 10: Germany: Parties re-branding conjoint experiment
+
+```{r, warning=FALSE, echo=FALSE}
+for (i in c("Austria", "Italy", "Hungary", "Germany")) {
+  plot_dat <- cj(subset(dat, market == i), CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, estimate = "mm") %>%
+    add_row(level = " ", feature = "CJ2Name") %>%
+    add_row(level = "  ", feature = "CJ2Organization")
+
+  ggplot(plot_dat, aes(y = level, color = feature)) +
+    # geom_vline(xintercept = 0, color = "grey") +
+    geom_hline(yintercept = 4, color = "white", size = 10) +
+    geom_hline(yintercept = 8, color = "white", size = 10) +
+    geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper)) +
+    theme_minimal() +
+    xlab("Marginal means") +
+    ylab("") +
+    scale_y_discrete(limits = rev(c(
+      "No name change", "Takes-up party",
+      "Deletes party", "Takes-up movement", "Deletes movement", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+    scale_color_manual(
+      values = colors[1:3],
+      labels = c("Name", "Organization", "Action form"),
+      breaks = c("CJ2Name", "CJ2Organization", "CJ2Form")
+    ) +
+    theme(
+      legend.title = element_blank(),
+      legend.position = "bottom",
+      legend.key.width = unit(1, "cm"),
+    )
+
+  ggsave(
+    path = "appendix/figures/",
+    filename = paste0("CJ2_main_tradeoff_", i, image_type),
+    scale = 1.4,
+    width = 6,
+    height = 4,
+    dpi = 400
+  )
+}
+```
+
+## Figure 11: Heterogeneous effects by satisfaction with democracy (new party branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~stfdem_cat) # highly significant
+
+dat_plot <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~stfdem_cat, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(stfdem_cat %in% c("Very dissatisfied", "Very satisfied"))  %>%
+  mutate(stfdem_cat=factor(stfdem_cat, levels=c("Very satisfied", "Very dissatisfied"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=stfdem_cat, group=stfdem_cat), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "New [country]", "Party for a new [country]",
+    "Movement for a new [country]", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_shape_manual("Satisfaction with democracy:", 
+                     breaks=c("Very dissatisfied", "Very satisfied"),
+                     limits=c("Very dissatisfied", "Very satisfied"),
+                     values=c("Very satisfied"=16, "Very dissatisfied"=15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical")
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_heteff_satdem_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+```
+
+## Figure 12: Heterogeneous effects by satisfaction with democracy (parties re-branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~stfdem_cat) # highly significant
+
+dat_plot <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~stfdem_cat, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>%
+  filter(stfdem_cat %in% c("Very dissatisfied", "Very satisfied"))  %>%
+  mutate(stfdem_cat=factor(stfdem_cat, levels=c("Very satisfied", "Very dissatisfied"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=stfdem_cat, group=stfdem_cat), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+      "No name change", "Takes-up party",
+      "Deletes party", "Takes-up movement", "Deletes movement", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+  scale_shape_manual("Satisfaction with democracy:", 
+                     breaks=c("Very dissatisfied", "Very satisfied"),
+                     limits=c("Very dissatisfied", "Very satisfied"),
+                     values=c("Very satisfied"=16, "Very dissatisfied"=15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical")
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_heteff_satdem_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+```
+
+## Figure 13: Heterogeneous effects by left-right (new party branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~lrscale_cat) # highly significant
+
+dat_plot <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~lrscale_cat, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(lrscale_cat %in% c("Far left", "Center", "Far right"))  %>%
+  mutate(lrscale_cat=factor(lrscale_cat, levels=c( "Far right", "Center", "Far left"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=lrscale_cat, group=lrscale_cat), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "New [country]", "Party for a new [country]",
+    "Movement for a new [country]", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_shape_manual("Left-right position:", 
+                     limits=c("Far right", "Center", "Far left"),
+                     breaks=c("Far right", "Center", "Far left"),
+                     values=c(17, 16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  guides(shape = guide_legend(reverse=T)) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical")
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_heteff_ideol_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+```
+
+## Figure 14: Heterogeneous effects by left-right (parties re-branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~lrscale_cat) # highly significant
+
+dat_plot <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~lrscale_cat, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(lrscale_cat %in% c("Far left", "Center", "Far right"))  %>%
+  mutate(lrscale_cat=factor(lrscale_cat, levels=c( "Far right", "Center", "Far left"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=lrscale_cat, group=lrscale_cat), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+      "No name change", "Takes-up party",
+      "Deletes party", "Takes-up movement", "Deletes movement", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+  scale_shape_manual("Left-right position:", 
+                     limits=c("Far right", "Center", "Far left"),
+                     breaks=c("Far right", "Center", "Far left"),
+                     values=c(17, 16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  guides(shape = guide_legend(reverse=T)) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical")
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_heteff_ideol_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+```
+
+## Figure 15: Heterogeneous effects by the strength of party identification (new party branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~pid_strength) # highly significant
+
+dat_plot <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~pid_strength, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(pid_strength %in% c("No PID", "Only sympathizer", "Very connected"))  %>%
+  mutate(pid_strength=factor(pid_strength, levels=c("No PID", "Only sympathizer", "Very connected"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=pid_strength, group=pid_strength), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "New [country]", "Party for a new [country]",
+    "Movement for a new [country]", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_shape_manual("Party identification:", 
+                     limits=c("No PID", "Only sympathizer", "Very connected"),
+                     breaks=c("No PID", "Only sympathizer", "Very connected"),
+                     values=c(17, 16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  guides(shape = guide_legend(reverse=T)) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical")
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_heteff_pid_strength_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+```
+
+## Figure 16: Heterogeneous effects by the strength of party identification (parties re-branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~pid_strength) # highly significant
+
+dat_plot <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~pid_strength, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(pid_strength %in% c("No PID", "Only sympathizer", "Very connected"))  %>%
+  mutate(pid_strength=factor(pid_strength, levels=c("No PID", "Only sympathizer", "Very connected"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=pid_strength, group=pid_strength), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+      "No name change", "Takes-up party",
+      "Deletes party", "Takes-up movement", "Deletes movement", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+  scale_shape_manual("Party identification:", 
+                     limits=c("No PID", "Only sympathizer", "Very connected"),
+                     breaks=c("No PID", "Only sympathizer", "Very connected"),
+                     values=c(17, 16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  guides(shape = guide_legend(reverse=T)) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical")
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_heteff_pid_strength_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+```
+
+## Figure 17: Heterogeneous effects by participation in demonstrations (new party branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~act_demo) # highly significant
+
+dat_plot <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~act_demo, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(act_demo %in% c("Never", "Often/ very often"))  %>%
+  mutate(act_demo=factor(act_demo, levels=c("Never", "Often/ very often"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=act_demo, group=act_demo), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "New [country]", "Party for a new [country]",
+    "Movement for a new [country]", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_shape_manual("Participating in demonstrations:", 
+                     breaks=c("Never", "Often/ very often"),
+                     limits=c("Never", "Often/ very often"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_heteff_act_demo_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+```
+
+## Figure 18: Heterogeneous effects by participation in demonstrations (parties re-branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~act_demo) # highly significant
+
+dat_plot <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~act_demo, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>%
+  filter(act_demo %in% c("Never", "Often/ very often"))  %>%
+  mutate(act_demo=factor(act_demo, levels=c("Never", "Often/ very often"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=act_demo, group=act_demo), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+      "No name change", "Takes-up party",
+      "Deletes party", "Takes-up movement", "Deletes movement", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+  scale_shape_manual("Participating in demonstrations:", 
+                     breaks=c("Never", "Often/ very often"),
+                     limits=c("Never", "Often/ very often"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_heteff_act_demo_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+```
+
+## Figure 19: Heterogeneous effects by internal eﬀicacy (new party branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~int_eff) # not significant
+
+dat_plot <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~int_eff, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(int_eff %in% c("Not at all", "A lot"))  %>%
+  mutate(int_eff=factor(int_eff, levels=c("Not at all", "A lot"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=int_eff, group=int_eff), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "New [country]", "Party for a new [country]",
+    "Movement for a new [country]", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_shape_manual("Internal efficacy:", 
+                     breaks=c("Not at all", "A lot"),
+                     limits=c("Not at all", "A lot"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_heteff_int_eff_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+
+```
+
+## Figure 20: Heterogeneous effects by internal eﬀicacy (parties re-branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~int_eff) # highly significant
+
+dat_plot <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~int_eff, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>%
+  filter(int_eff %in% c("Not at all", "A lot"))  %>%
+  mutate(int_eff=factor(int_eff, levels=c("Not at all", "A lot"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=int_eff, group=int_eff), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+      "No name change", "Takes-up party",
+      "Deletes party", "Takes-up movement", "Deletes movement", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+  scale_shape_manual("Internal efficacy:", 
+                     breaks=c("Not at all", "A lot"),
+                     limits=c("Not at all", "A lot"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_heteff_int_eff_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+```
+
+
+## Figure 21: Heterogeneous effects by external eﬀicacy (new party branding)
+
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~ext_eff) # not significant
+
+dat_plot <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~ext_eff, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(ext_eff %in% c("Not at all", "Strong/ very strong"))  %>%
+  mutate(ext_eff=factor(ext_eff, levels=c("Not at all", "Strong/ very strong"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=ext_eff, group=ext_eff), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "New [country]", "Party for a new [country]",
+    "Movement for a new [country]", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_shape_manual("External efficacy:", 
+                     breaks=c("Not at all", "Strong/ very strong"),
+                     limits=c("Not at all", "Strong/ very strong"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_heteff_ext_eff_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+
+```
+
+## Figure 22: Heterogeneous effects by external eﬀicacy (parties re-branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~ext_eff) # highly significant
+
+dat_plot <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~ext_eff, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>%
+  filter(ext_eff %in% c("Not at all", "Strong/ very strong"))  %>%
+  mutate(ext_eff=factor(ext_eff, levels=c("Not at all", "Strong/ very strong"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=ext_eff, group=ext_eff), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+      "No name change", "Takes-up party",
+      "Deletes party", "Takes-up movement", "Deletes movement", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+  scale_shape_manual("External efficacy:", 
+                     breaks=c("Not at all", "Strong/ very strong"),
+                     limits=c("Not at all", "Strong/ very strong"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_heteff_ext_eff_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+```
+
+## Figure 23: Heterogeneous effects by populist attitudes (new party branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~populism_cat) # not significant
+
+dat_plot <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~populism_cat, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(populism_cat %in% c("Lowest 25%", "Upper 25%"))  %>%
+  mutate(populism_cat=factor(populism_cat, levels=c("Lowest 25%", "Upper 25%"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=populism_cat, group=populism_cat), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "New [country]", "Party for a new [country]",
+    "Movement for a new [country]", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_shape_manual("Populist attitudes:", 
+                     breaks=c("Lowest 25%", "Upper 25%"),
+                     limits=c("Lowest 25%", "Upper 25%"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_heteff_populism_cat_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+
+```
+
+## Figure 24: Heterogeneous effects by populist attitudes (parties re-branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~populism_cat) # highly significant
+
+dat_plot <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~populism_cat, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>%
+  filter(populism_cat %in% c("Lowest 25%", "Upper 25%"))  %>%
+  mutate(populism_cat=factor(populism_cat, levels=c("Lowest 25%", "Upper 25%"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=populism_cat, group=populism_cat), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+      "No name change", "Takes-up party",
+      "Deletes party", "Takes-up movement", "Deletes movement", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+  scale_shape_manual("Populist attitudes:", 
+                     breaks=c("Lowest 25%", "Upper 25%"),
+                     limits=c("Lowest 25%", "Upper 25%"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_heteff_populism_cat_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+```
+
+## Figure 25: Heterogeneous effects by trust (new party branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+cj_anova(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~trust_cat) # not significant
+
+dat_plot <- cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~trust_cat, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>% 
+  filter(trust_cat %in% c("Lowest 25%", "Upper 25%"))  %>%
+  mutate(trust_cat=factor(trust_cat, levels=c("Lowest 25%", "Upper 25%"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=trust_cat, group=trust_cat), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+    "New [country]", "Party for a new [country]",
+    "Movement for a new [country]", " ",
+    "No organization", "Strong leader", "Close links to CSOs", "  ",
+    "No action form", "Parliament", "Demonstrations"
+  ))) +
+  scale_shape_manual("Trust:", 
+                     breaks=c("Lowest 25%", "Upper 25%"),
+                     limits=c("Lowest 25%", "Upper 25%"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_heteff_trust_cat_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+
+```
+
+## Figure 26: Heterogeneous effects by trust (parties re-branding)
+
+```{r, warning=FALSE, echo=FALSE}
+
+cj_anova(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~trust_cat) # highly significant
+
+dat_plot <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~trust_cat, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>%
+  filter(trust_cat %in% c("Lowest 25%", "Upper 25%"))  %>%
+  mutate(trust_cat=factor(trust_cat, levels=c("Lowest 25%", "Upper 25%"))) %>% 
+  add_row(level = " ", feature = "Name") %>%
+  add_row(level = "  ", feature = "Organization")
+
+
+ggplot(dat_plot, aes(y = level, color = feature)) +
+  geom_hline(yintercept = 4, color = "white", size = 10) +
+  geom_hline(yintercept = 8, color = "white", size = 10) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper, 
+                      shape=trust_cat, group=trust_cat), position = position_dodge(width=0.7)) +
+  theme_minimal() +
+  xlab("Marginal means") +
+  ylab("") +
+  scale_y_discrete(limits = rev(c(
+      "No name change", "Takes-up party",
+      "Deletes party", "Takes-up movement", "Deletes movement", " ",
+      "No organization", "Strong leader", "Close links to CSOs", "  ",
+      "No action form", "Parliament", "Demonstrations"
+    ))) +
+  scale_shape_manual("Trust:", 
+                     breaks=c("Lowest 25%", "Upper 25%"),
+                     limits=c("Lowest 25%", "Upper 25%"),
+                     values=c(16, 15),
+                     na.translate = FALSE) +
+  scale_color_manual("Feature:",
+    values = colors[1:3],
+    labels = c("Name", "Organization", "Action form"),
+    breaks = c("Name", "Organization", "Form")
+  ) +
+  theme(legend.position = "bottom",
+        legend.box = "vertical") +
+  guides(shape = guide_legend(reverse=T))
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_heteff_trust_cat_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+
+```
+
+## Figure 27: Heterogeneous effects by issue salience (new party branding)
+
+```{r, warning=FALSE, echo=FALSE}
+cj(dat, CJ1TradeOff ~ CJ1Name + CJ1Organization + CJ1Form, id = ~ID, by = ~imp_issue, estimate = "mm") %>%
+  mutate(feature = substring(feature, 4)) %>%
+  ggplot(aes(y = level, color = BY, shape = BY)) +
+  # geom_vline(xintercept = 0, color = "grey", position = position_dodge(width = 0.6)) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper), position = position_dodge(width = 0.6)) +
+  theme_minimal() +
+  xlab("") +
+  ylab("") +
+  facet_wrap(~ factor(feature, levels = c("Name", "Organization", "Form")), ncol = 2, scales = "free_y") +
+  scale_y_discrete(limits = rev) +
+  scale_color_manual(
+    values = colors[1:3],
+    breaks = c("Taxes and benefits", "Immigration", "Climate"),
+    name = "Most important issue:"
+  ) +
+  scale_shape_manual(
+    values = c(15, 16, 17),
+    breaks = c("Taxes and benefits", "Immigration", "Climate"),
+    name = "Most important issue:"
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.key.width = unit(1, "cm"),
+  )
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ1_imp_issue_tradeoff", image_type),
+  scale = 1.4,
+  width = 6,
+  height = 4,
+  dpi = 400
+)
+```
+
+## Figure 28: Austria: Heterogeneous effects by partisanship (parties re-branding)
+## Figure 29: Italy: Heterogeneous effects by partisanship (parties re-branding)
+## Figure 30: Hungary: Heterogeneous effects by partisanship (parties re-branding)
+## Figure 31: Germany: Heterogeneous effects by partisanship (parties re-branding)
+
+```{r, warning=FALSE, echo=FALSE, fig.width = 7, fig.height = 8}
+plot_dat <- cj(dat, CJ2TradeOff ~ CJ2Name + CJ2Organization + CJ2Form, id = ~ID, by = ~party_in_CJ2, estimate = "mm") %>%
+  mutate(estimate = case_when(
+    estimate == 0 & is.na(std.error) ~ as.numeric(NA),
+    TRUE ~ as.numeric(estimate)
+  )) %>%
+  mutate(feature = substring(feature, 4)) %>%
+  mutate(cntry = case_when(
+    party_in_CJ2 %in% c("SPÖ", "ÖVP", "FPÖ", "Grüne", "NEOS", "BIER", "MFG") ~ "Austria",
+    party_in_CJ2 %in% c("Fidesz", "DK", "Momentum", "Mi Hazánk", "Jobbik", "MKKP", "LMP", "MSZP", "PM") ~ "Hungary",
+    party_in_CJ2 %in% c("FdI", "FI", "Lega", "PD", "M5S", "AVS") ~ "Italy",
+    party_in_CJ2 %in% c("CDU/CSU", "SPD", "B90/Grünen", 
+    "AfD", "FDP", "Die Linke", "BSW") ~ "Germany",
+    TRUE ~ as.character(NA)
+  )) %>%
+  mutate(party_in_CJ2 = factor(party_in_CJ2, levels = c(
+    "SPÖ", "ÖVP", "FPÖ", "Grüne", "NEOS",
+    "BIER", "MFG", "Fidesz", "DK", "Momentum", "Mi Hazánk",
+    "Jobbik", "MKKP", "LMP", "MSZP", "PM", "FdI", "FI",
+    "Lega", "PD", "M5S", "AVS",
+    "CDU/CSU", "SPD", "B90/Grünen", 
+    "AfD", "FDP", "Die Linke", "BSW"
+  ))) %>%
+  na.omit(.)
+
+ggplot(
+  plot_dat[plot_dat$cntry == "Austria" & plot_dat$feature=="Name", ],
+  aes(y = level)
+) +
+  # geom_vline(xintercept = 0, color = "grey", position = position_dodge(width = 0.6)) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper), position = position_dodge(width = 0.6)) +
+  theme_minimal() +
+  xlab("") +
+  ylab("") +
+  facet_wrap(~party_in_CJ2, ncol = 2) +
+  scale_y_discrete(limits = rev) 
+  
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_by_party_tradeoff_Austria", image_type),
+  width = 5.5,
+  height = 7,
+  dpi = 400
+)
+
+ggplot(
+  plot_dat[plot_dat$cntry == "Italy" & plot_dat$feature=="Name", ],
+  aes(y = level)
+) +
+  # geom_vline(xintercept = 0, color = "grey", position = position_dodge(width = 0.6)) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper), position = position_dodge(width = 0.6)) +
+  theme_minimal() +
+  xlab("") +
+  ylab("") +
+  facet_wrap(~party_in_CJ2, ncol = 2) +
+  scale_y_discrete(limits = rev) 
+
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_by_party_tradeoff_Italy", image_type),
+  width = 5.5,
+  height = 7,
+  dpi = 400
+)
+
+
+ggplot(
+  plot_dat[plot_dat$cntry == "Hungary" & plot_dat$feature=="Name", ],
+  aes(y = level)
+) +
+  # geom_vline(xintercept = 0, color = "grey", position = position_dodge(width = 0.6)) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper), position = position_dodge(width = 0.6)) +
+  theme_minimal() +
+  xlab("") +
+  ylab("") +
+  facet_wrap(~party_in_CJ2, ncol = 3) +
+  scale_y_discrete(limits = rev) 
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_by_party_tradeoff_Hungary", image_type),
+  width = 5.5,
+  height = 7,
+  dpi = 400
+)
+
+ggplot(
+  plot_dat[plot_dat$cntry == "Germany" & plot_dat$feature=="Name", ],
+  aes(y = level)
+) +
+  # geom_vline(xintercept = 0, color = "grey", position = position_dodge(width = 0.6)) +
+  geom_pointrange(aes(x = estimate, xmin = lower, xmax = upper), position = position_dodge(width = 0.6)) +
+  theme_minimal() +
+  xlab("") +
+  ylab("") +
+  facet_wrap(~party_in_CJ2, ncol = 2) +
+  scale_y_discrete(limits = rev) 
+  
+ggsave(
+  path = "appendix/figures/",
+  filename = paste0("CJ2_by_party_tradeoff_Germany", image_type),
+  width = 5.5,
+  height = 7,
+  dpi = 400
+)
+
+```
+
+
+```{r, warning=FALSE, echo=FALSE}
+
+```

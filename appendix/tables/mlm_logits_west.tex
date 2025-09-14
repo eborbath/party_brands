@@ -1,0 +1,50 @@
+
+\begin{table}[h!]
+\caption{Logistic regression models of brands in Western Europe}
+\begin{center}
+\begin{tabular}{l@{} D{)}{)}{9)3}@{} D{)}{)}{9)3}@{} D{)}{)}{12)3}@{}}
+\toprule
+ & \multicolumn{1}{c}{Classical} & \multicolumn{1}{c}{Nonideological} & \multicolumn{1}{c}{Nonideological} \\
+ & \multicolumn{1}{c}{party name} & \multicolumn{1}{c}{nonparty name} & \multicolumn{1}{c}{movement name} \\
+\midrule
+Intercept                        & -0.38 \; (0.19)^{*}   & -3.48 \; (0.45)^{***} & -27.61 \;  (29.83)      \\
+Party family (ref: Christ. dem.) &                       &                       &                         \\
+\quad Communist/Socialist        & 1.91 \; (0.10)^{***}  & -0.46 \; (0.15)^{**}  & 17.80 \;  (29.82)       \\
+\quad Social democracy           & 2.08 \; (0.10)^{***}  & -2.50 \; (0.25)^{***} & 18.67 \;  (29.82)       \\
+\quad Green/Ecologist            & 1.32 \; (0.12)^{***}  & -0.99 \; (0.18)^{***} & 18.23 \;  (29.82)       \\
+\quad Liberal                    & 0.31 \; (0.10)^{**}   & 0.27 \; (0.14)^{*}    & 19.03 \;  (29.82)       \\
+\quad Conservative               & 0.54 \; (0.10)^{***}  & 0.35 \; (0.14)^{*}    & 19.75 \;  (29.82)       \\
+\quad Agrarian                   & 0.90 \; (0.16)^{***}  & 1.22 \; (0.21)^{***}  & 20.12 \;  (29.83)       \\
+\quad Right-wing                 & 0.07 \; (0.11)        & 0.97 \; (0.14)^{***}  & 20.80 \;  (29.82)       \\
+\quad Other                      & -2.07 \; (0.47)^{***} & 0.32 \; (0.25)        & 17.43 \;  (29.84)       \\
+Gov. status                      &                       &                       &                         \\
+\quad Past PM party              & -0.22 \; (0.08)^{**}  & 0.54 \; (0.15)^{***}  & -21.44 \; (256.44)      \\
+\quad Opp. party                 & -0.41 \; (0.07)^{***} & 0.23 \; (0.10)^{*}    & 1.16 \;   (0.29)^{***}  \\
+Party features                   &                       &                       &                         \\
+\quad Log(party age)             & 1.87 \; (0.17)^{***}  & -2.24 \; (0.19)^{***} & -1.57 \;   (0.34)^{***} \\
+\quad Vote share                 & 0.60 \; (0.13)^{***}  & 0.07 \; (0.21)        & -0.51 \;   (0.53)       \\
+\quad Electoral coalition        & -3.00 \; (0.36)^{***} & 1.00 \; (0.17)^{***}  & -1.94 \;   (0.48)^{***} \\
+System features                  &                       &                       &                         \\
+\quad Econ. polariz.             & -0.15 \; (0.10)       & 0.20 \; (0.15)        & -0.41 \;   (0.31)       \\
+\quad Cult. polariz.             & -0.23 \; (0.11)^{*}   & 0.16 \; (0.16)        & 0.41 \;   (0.28)        \\
+\quad Electoral volatil.         & -0.04 \; (0.11)       & 0.38 \; (0.15)^{*}    & -0.02 \;   (0.30)       \\
+\quad Turnout                    & 0.13 \; (0.11)        & -0.16 \; (0.15)       & -0.17 \;   (0.35)       \\
+\quad Electoral dem.             & 0.98 \; (0.22)^{***}  & 0.93 \; (0.40)^{*}    & 2.75 \;   (1.80)        \\
+\quad Presidentialism            & 0.58 \; (0.34)        & -0.78 \; (0.46)       & 0.41 \;   (1.23)        \\
+Decades (ref: 1945-1969)         &                       &                       &                         \\
+\quad 1970-1989                  & -0.31 \; (0.08)^{***} & 0.60 \; (0.15)^{***}  & 0.29 \;   (0.31)        \\
+\quad 1990-2008                  & -0.50 \; (0.10)^{***} & 0.90 \; (0.18)^{***}  & -0.14 \;   (0.37)       \\
+\quad 2009-2023                  & -0.99 \; (0.11)^{***} & 1.13 \; (0.20)^{***}  & 0.62 \;   (0.40)        \\
+\midrule
+AIC                              & 9482.10               & 5215.90               & 1540.23                 \\
+BIC                              & 9658.16               & 5391.96               & 1716.28                 \\
+Num. obs.                        & 8453                  & 8453                  & 8453                    \\
+Country*Year                     & 1000                  & 1000                  & 1000                    \\
+Country                          & 14                    & 14                    & 14                      \\
+\bottomrule
+\multicolumn{4}{l}{\scriptsize{$^{***}p<0.001$; $^{**}p<0.01$; $^{*}p<0.05$}}
+\end{tabular}
+\label{table:mlm_reg_table_all}
+\end{center}
+\end{table}
+
