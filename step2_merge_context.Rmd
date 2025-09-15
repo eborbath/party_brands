@@ -54,7 +54,7 @@ rm(v_dem)
 ```{r, echo=T, message = T, include = T}
 
 
-vol_dat_w1 <- read_xlsx("context_data/dataset_of_electoral_volatility_and_its_internal_components_in_western_europe__1945-2015_.xlsx") %>% 
+vol_dat_w1 <- read_xlsx("context_data/volatility_and_components_in_western_europe_1945-2015.xlsx") %>% 
   select("Country", "Election_Year", "Election_date", "RegV", "AltV", "OthV", "TV")
 
 vol_dat_w2 <- read_xlsx("context_data/update_on_elections_2015-2023.xlsx") %>% 
